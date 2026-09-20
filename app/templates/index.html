@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Projetos — Histórias Bíblicas Studio{% endblock %}
+{% block content %}
+<section class="hero">
+  <h1>Produza histórias bíblicas para YouTube</h1>
+  <p class="lede">
+    Roteiro → narração TTS → cenas → MP4 com Ken Burns.
+    <strong>Download do vídeo garantido.</strong>
+  </p>
+  <form class="demo-form" method="post" action="/api/projects/demo-davi-golias">
+    <button type="submit" class="btn btn-accent">▶ Demo Davi e Golias</button>
+  </form>
+</section>
+
+<section class="grid-2">
+  <div class="card">
+    <h2>Novo projeto</h2>
+    <form method="post" action="/api/projects" class="stack">
+      <label>
+        Título
+        <input name="title" required placeholder="Ex.: Noé e a arca" />
+      </label>
+      <label>
+        Tema
+        <input name="theme" value="{{ default_theme }}" />
+      </label>
+      <button type="submit" class="btn btn-primary">Criar projeto</button>
+    </form>
+  </div>
+
+  <div class="card">
+    <h2>Projetos salvos</h2>
+    {% if projects %}
+    <ul class="project-list">
+      {% for p in projects %}
+      <li>
+        <a href="/projects/{{ p.id }}">
+          <strong>{{ p.title }}</strong>
+          <span class="meta">{{ p.theme }} · {{ p.status }}</span>
+        </a>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="muted">Nenhum projeto ainda. Crie um ou rode a demo.</p>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

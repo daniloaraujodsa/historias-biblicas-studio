@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{% block title %}Histórias Bíblicas Studio{% endblock %}</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/">
+      <span class="brand-mark">✝</span>
+      <span>Histórias Bíblicas Studio</span>
+    </a>
+    <nav>
+      <a href="/">Projetos</a>
+    </nav>
+  </header>
+  <main class="container">
+    {% block content %}{% endblock %}
+  </main>
+  <footer class="footer">
+    <p>MVP local · narração edge-tts · imagens IA (Pollinations/OpenAI) · export MP4 via FFmpeg</p>
+  </footer>
+  <script src="/static/app.js"></script>
+</body>
+</html>
