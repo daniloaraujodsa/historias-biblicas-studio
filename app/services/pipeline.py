@@ -8,6 +8,8 @@ from typing import Callable
 from app import db
 from app.config import EXPORTS_DIR, PROJECTS_DIR
 from app.services import captions, demo_script, images, publish, scenes, tts, video
+from app.services.audio_mode import resolve_mode, uses_narration
+from app.services.visual import project_visual_kwargs
 
 ProgressFn = Callable[[int, str], None]
 
@@ -29,6 +31,7 @@ def _gen_image(project_id: str, scene: dict, out: Path, seed_salt: int = 0) -> t
     title = scene.get("title") or f"Cena {idx + 1}"
     scene_text = scene.get("text") or ""
     cast = scene.get("cast") or ""
+    look = project_visual_kwargs(project)
     path, source = images.generate_scene_image(
         title,
         scene_text,
@@ -38,9 +41,16 @@ def _gen_image(project_id: str, scene: dict, out: Path, seed_salt: int = 0) -> t
         characters=chars,
         aspect=aspect,
         cast=cast,
+        **look,
     )
     prompt = images.build_image_prompt(
-        title, scene_text, idx, characters=chars, aspect=aspect, cast=cast
+        title,
+        scene_text,
+        idx,
+        characters=chars,
+        aspect=aspect,
+        cast=cast,
+        **look,
     )
     return path, source, prompt
 
@@ -117,19 +127,32 @@ def run_images(project_id: str, report: ProgressFn | None = None) -> None:
     )
 
 
+def _prepare_timing(project: dict, scene_list: list[dict]) -> tuple[list[dict], float, Path | None]:
+    """Duração das cenas e arquivo de narração, conforme o modo de áudio."""
+    mode = resolve_mode(project.get("audio_mode"), music=bool(project.get("add_music", True)))
+    audio_raw = project.get("audio_path")
+    narration = Path(audio_raw) if audio_raw and Path(audio_raw).exists() else None
+    if uses_narration(mode):
+        if narration is None:
+            raise ValueError("Gere a narração TTS primeiro")
+        duration = tts.audio_duration_sec(narration)
+        if not all(s.get("duration_sec") for s in scene_list):
+            scene_list = scenes.allocate_durations(scene_list, duration)
+        return scene_list, duration, narration
+    scene_list = scenes.ensure_durations(scene_list)
+    duration = sum(max(float(s.get("duration_sec") or 3.0), 1.0) for s in scene_list)
+    return scene_list, duration, None
+
+
 def run_render(project_id: str, report: ProgressFn | None = None) -> None:
     project = db.get_project(project_id)
     if not project:
         raise ValueError("Projeto não encontrado")
-    audio = project.get("audio_path")
     scene_list = project.get("scenes") or []
-    if not audio or not Path(audio).exists():
-        raise ValueError("Gere a narração TTS primeiro")
     if not scene_list or not all(s.get("image_path") for s in scene_list):
         raise ValueError("Gere as imagens das cenas primeiro")
-    duration = tts.audio_duration_sec(Path(audio))
-    if not all(s.get("duration_sec") for s in scene_list):
-        scene_list = scenes.allocate_durations(scene_list, duration)
+    mode = resolve_mode(project.get("audio_mode"), music=bool(project.get("add_music", True)))
+    scene_list, duration, narration = _prepare_timing(project, scene_list)
 
     pdir = _pdir(project_id)
     if report:
@@ -150,6 +173,11 @@ def run_render(project_id: str, report: ProgressFn | None = None) -> None:
         project.get("title") or "",
         project.get("theme") or "",
         project.get("script") or "",
+        series_name=project.get("series_name") or "",
+        episode_number=project.get("episode_number"),
+        brand_name=project.get("brand_name") or "",
+        brand_voice=project.get("brand_voice") or "",
+        brand_caption_style=project.get("brand_caption_style") or "",
     )
     if (project.get("youtube_title") or "").strip():
         meta["youtube_title"] = project["youtube_title"].strip()
@@ -160,16 +188,22 @@ def run_render(project_id: str, report: ProgressFn | None = None) -> None:
 
 
     if report:
-        report(88, "Montando MP4 (Ken Burns + áudio)…")
+        step = {
+            "none": "Montando MP4 sem áudio…",
+            "music": "Montando MP4 com trilha…",
+            "narration": "Montando MP4 com narração…",
+        }.get(mode, "Montando MP4 (Ken Burns + áudio)…")
+        report(88, step)
     out = EXPORTS_DIR / f"{project_id}.mp4"
     video.assemble_mp4(
         scene_list,
-        Path(audio),
+        narration,
         out,
         total_duration=duration,
         aspect=project.get("aspect") or "16:9",
         captions_path=srt if project.get("burn_captions", True) else None,
         music=bool(project.get("add_music", True)),
+        audio_mode=mode,
     )
     pack = publish.write_pack(
         output_path=EXPORTS_DIR / f"{project_id}_youtube.zip",
@@ -195,10 +229,18 @@ def run_render(project_id: str, report: ProgressFn | None = None) -> None:
 def run_full(project_id: str, voice: str, report: ProgressFn) -> None:
     report(4, "Segmentando o roteiro em cenas…")
     run_segment(project_id)
-    report(10, "Narração TTS por cena…")
-    run_tts(project_id, voice, report)
+    project = db.get_project(project_id) or {}
+    mode = resolve_mode(project.get("audio_mode"), music=bool(project.get("add_music", True)))
+    if uses_narration(mode):
+        report(10, "Narração TTS por cena…")
+        run_tts(project_id, voice, report)
+    else:
+        report(10, "Modo sem narração — duração estimada pelo texto…")
+        fresh = db.get_project(project_id) or {}
+        timed = scenes.ensure_durations(list(fresh.get("scenes") or []))
+        db.update_project(project_id, scenes_json=db.scenes_to_json(timed))
     report(28, "Gerando imagens das cenas…")
     run_images(project_id, report)
-    report(80, "Legendas, música e montagem…")
+    report(80, "Legendas, áudio e montagem…")
     run_render(project_id, report)
     report(100, "Vídeo pronto")

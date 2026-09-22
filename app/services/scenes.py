@@ -151,6 +151,21 @@ def _title_from_text(text: str, index: int) -> str:
     return first or f"Cena {index}"
 
 
+def ensure_durations(
+    scenes: list[dict[str, Any]],
+    *,
+    seconds_per_word: float = 0.45,
+    minimum: float = 3.0,
+) -> list[dict[str, Any]]:
+    """Preenche duração ausente a partir do tamanho do texto (trilha ou mudo)."""
+    for scene in scenes:
+        if scene.get("duration_sec"):
+            continue
+        words = len((scene.get("text") or "").split())
+        scene["duration_sec"] = round(max(minimum, words * seconds_per_word), 3)
+    return scenes
+
+
 def allocate_durations(
     scenes: list[dict[str, Any]], total_audio_sec: float
 ) -> list[dict[str, Any]]:

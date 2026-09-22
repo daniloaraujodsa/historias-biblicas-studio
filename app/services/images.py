@@ -41,11 +41,6 @@ PALETTES = [
     ((24, 22, 16), (80, 70, 40), (230, 200, 120)),
 ]
 
-STYLE_SUFFIX = (
-    "biblical epic cinematic still, ancient Near East landscape, "
-    "golden hour dramatic lighting, film still, photorealistic, "
-    "no text, no watermark, no logos, no subtitles"
-)
 STYLE_LANDSCAPE = "wide 16:9 cinematic composition"
 STYLE_PORTRAIT = "vertical 9:16 cinematic composition, full-body or close portrait framed for mobile"
 
@@ -68,6 +63,12 @@ def build_image_prompt(
     compact: bool = False,
     aspect: str = "16:9",
     cast: str = "",
+    visual_style: str = "",
+    light: str = "",
+    camera: str = "",
+    atmosphere: str = "",
+    prompt_extra: str = "",
+    brand_fragment: str = "",
 ) -> str:
     """Monta prompt em inglês a partir do roteiro/título + bible dos personagens.
 
@@ -76,6 +77,7 @@ def build_image_prompt(
         compact: se True, encurta o texto narrativo (útil p/ Pollinations).
     """
     from app.services.characters import build_consistency_block, match_characters_in_scene
+    from app.services.visual import compose_visual_block
 
     title = _sanitize_prompt(scene_title or f"Scene {scene_index + 1}")
     text = _sanitize_prompt((scene_text or "").replace("\n", " "))
@@ -102,7 +104,18 @@ def build_image_prompt(
     if consistency:
         parts.append(consistency)
     parts.append(framing)
-    parts.append(STYLE_SUFFIX)
+    parts.append(
+        compose_visual_block(
+            visual_style,
+            light=light,
+            camera=camera,
+            atmosphere=atmosphere,
+        )
+    )
+    if (brand_fragment or "").strip():
+        parts.append(brand_fragment.strip())
+    if (prompt_extra or "").strip():
+        parts.append(prompt_extra.strip())
     prompt = "\n".join(parts)
     if compact:
         prompt = " ".join(prompt.split())
@@ -125,6 +138,12 @@ def generate_scene_image(
     characters: list | None = None,
     aspect: str = "16:9",
     cast: str = "",
+    visual_style: str = "",
+    light: str = "",
+    camera: str = "",
+    atmosphere: str = "",
+    prompt_extra: str = "",
+    brand_fragment: str = "",
 ) -> tuple[Path, str]:
     """Gera imagem no formato do projeto (16:9 ou 9:16).
 
@@ -155,23 +174,30 @@ def generate_scene_image(
             chosen = "pollinations"
     seed_key = scene_index + int(seed_salt)
 
+    prompt_kwargs = dict(
+        characters=chars,
+        aspect=aspect,
+        cast=cast,
+        visual_style=visual_style,
+        light=light,
+        camera=camera,
+        atmosphere=atmosphere,
+        prompt_extra=prompt_extra,
+        brand_fragment=brand_fragment,
+    )
     prompt_full = build_image_prompt(
         scene_title,
         scene_text,
         scene_index,
-        characters=chars,
         compact=False,
-        aspect=aspect,
-        cast=cast,
+        **prompt_kwargs,
     )
     prompt_compact = build_image_prompt(
         scene_title,
         scene_text,
         scene_index,
-        characters=chars,
         compact=True,
-        aspect=aspect,
-        cast=cast,
+        **prompt_kwargs,
     )
 
     if not force_placeholder:

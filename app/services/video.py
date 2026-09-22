@@ -13,18 +13,24 @@ from app.config import VIDEO_FPS, frame_size
 
 def assemble_mp4(
     scenes: list[dict[str, Any]],
-    audio_path: Path,
+    audio_path: Path | None,
     output_path: Path,
     total_duration: float | None = None,
     *,
     aspect: str = "16:9",
     captions_path: Path | None = None,
     music: bool = True,
+    audio_mode: str | None = None,
 ) -> Path:
+    from app.services.audio_mode import resolve_mode
+
     if not scenes:
         raise ValueError("Nenhuma cena para montar o vídeo")
-    if not audio_path.exists():
-        raise ValueError(f"Áudio não encontrado: {audio_path}")
+    mode = resolve_mode(audio_mode, music=music)
+    narration = Path(audio_path) if audio_path else None
+    if mode in ("narration", "both"):
+        if narration is None or not narration.exists():
+            raise ValueError(f"Áudio não encontrado: {audio_path}")
 
     width, height = frame_size(aspect)
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -64,13 +70,24 @@ def assemble_mp4(
             "concat",
         )
 
-        audio_mixed = Path(audio_path)
-        if music:
-            mixed = work / "narration_music.m4a"
-            _mix_music(Path(audio_path), mixed, total_duration)
-            audio_mixed = mixed
+        span = total_duration
+        if span is None:
+            span = sum(max(float(s.get("duration_sec") or 3.0), 1.0) for s in scenes)
 
-        vf = f"format=yuv420p"
+        audio_mixed: Path | None
+        if mode == "none":
+            audio_mixed = None
+        elif mode == "music":
+            audio_mixed = work / "music_only.m4a"
+            _render_music_bed(audio_mixed, span)
+        else:
+            audio_mixed = narration
+            if mode == "both" and narration is not None:
+                mixed = work / "narration_music.m4a"
+                _mix_music(narration, mixed, span)
+                audio_mixed = mixed
+
+        vf = "format=yuv420p"
         if captions_path and Path(captions_path).exists():
             srt = Path(captions_path)
             # Caminho escapado para o filtro subtitles
@@ -93,31 +110,65 @@ def assemble_mp4(
             "-y",
             "-i",
             str(silent_video),
-            "-i",
-            str(audio_mixed),
-            "-vf",
-            vf,
-            "-c:v",
-            "libx264",
-            "-preset",
-            "veryfast",
-            "-crf",
-            "22",
-            "-pix_fmt",
-            "yuv420p",
-            "-c:a",
-            "aac",
-            "-b:a",
-            "192k",
-            "-shortest",
-            "-movflags",
-            "+faststart",
-            str(output_path),
         ]
+        if audio_mixed is not None:
+            cmd.extend(["-i", str(audio_mixed)])
+        cmd.extend(
+            [
+                "-vf",
+                vf,
+                "-c:v",
+                "libx264",
+                "-preset",
+                "veryfast",
+                "-crf",
+                "22",
+                "-pix_fmt",
+                "yuv420p",
+            ]
+        )
+        if audio_mixed is not None:
+            cmd.extend(["-c:a", "aac", "-b:a", "192k", "-shortest"])
+        else:
+            cmd.append("-an")
+        cmd.extend(["-movflags", "+faststart", str(output_path)])
         _run(cmd, "mux")
         return output_path
     finally:
         shutil.rmtree(work, ignore_errors=True)
+
+
+def _render_music_bed(output_path: Path, duration: float | None) -> None:
+    """Leito sintético sozinho, um pouco mais presente do que sob a narração."""
+    dur = max(float(duration or 30.0), 1.0)
+    fade_out_start = max(dur - 3.0, 0.5)
+    _run(
+        [
+            "ffmpeg",
+            "-y",
+            "-f",
+            "lavfi",
+            "-i",
+            f"sine=frequency=196:sample_rate=44100:duration={dur:.3f}",
+            "-f",
+            "lavfi",
+            "-i",
+            f"sine=frequency=294:sample_rate=44100:duration={dur:.3f}",
+            "-filter_complex",
+            (
+                "amix=inputs=2:duration=longest,"
+                "lowpass=f=650,volume=0.35,"
+                "afade=t=in:st=0:d=1.5,"
+                f"afade=t=out:st={fade_out_start:.3f}:d=2.5"
+            ),
+            "-c:a",
+            "aac",
+            "-b:a",
+            "192k",
+            str(output_path),
+        ],
+        "music-only",
+    )
 
 
 def _mix_music(narration: Path, output_path: Path, duration: float | None) -> None:

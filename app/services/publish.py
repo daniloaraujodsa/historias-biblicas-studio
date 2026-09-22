@@ -18,11 +18,47 @@ STOP = {
 }
 
 
-def generate_metadata(title: str, theme: str, script: str) -> dict[str, str]:
+def generate_metadata(
+    title: str,
+    theme: str,
+    script: str,
+    *,
+    series_name: str = "",
+    episode_number: int | None = None,
+    brand_name: str = "",
+    brand_voice: str = "",
+    brand_caption_style: str = "",
+) -> dict[str, str]:
+    from app.services.brand import DEFAULT_BRAND
+
     clean_title = (title or "História bíblica").strip()
-    yt_title = clean_title
-    if "bíblic" not in clean_title.lower() and "biblic" not in clean_title.lower():
-        yt_title = f"{clean_title} | História Bíblica"
+    series = (series_name or "").strip()
+    brand = (brand_name or "").strip() or DEFAULT_BRAND["brand_name"]
+    voice = (brand_voice or "").strip()
+    caption_style = (brand_caption_style or "").strip()
+    episode: int | None = None
+    if episode_number not in (None, ""):
+        try:
+            parsed = int(episode_number)  # type: ignore[arg-type]
+        except (TypeError, ValueError):
+            parsed = 0
+        if parsed >= 1:
+            episode = parsed
+
+    if series and episode:
+        yt_title = f"{series} — Ep. {episode} · {clean_title}"
+    elif series:
+        yt_title = f"{series} — {clean_title}"
+    else:
+        yt_title = clean_title
+    if brand and brand.lower() not in yt_title.lower():
+        with_brand = f"{yt_title} | {brand}"
+        if len(with_brand) <= 95:
+            yt_title = with_brand
+    biblical = "bíblic" in yt_title.lower() or "biblic" in yt_title.lower()
+    if not biblical and brand.lower() not in yt_title.lower():
+        with_tag = f"{yt_title} | História Bíblica"
+        yt_title = with_tag if len(with_tag) <= 95 else yt_title
     if len(yt_title) > 95:
         yt_title = yt_title[:92] + "…"
 
@@ -30,20 +66,41 @@ def generate_metadata(title: str, theme: str, script: str) -> dict[str, str]:
     lead = re.split(r"\n\s*\n", body)[0].strip() if body else ""
     if len(lead) > 400:
         lead = lead[:397] + "…"
-    desc_parts = [
-        lead,
-        "",
-        f"📖 {theme.strip().capitalize() or 'Histórias bíblicas'}",
-        "",
-        "Vídeo narrado automaticamente pelo Histórias Bíblicas Studio.",
-        "Inscreva-se para mais histórias da Bíblia.",
-        "",
-        "#HistoriasBiblicas #Biblia #Fe",
-    ]
+    desc_parts = [lead, ""]
+    if series:
+        series_line = f"Série: {series}"
+        if episode:
+            series_line += f" · Episódio {episode}"
+        desc_parts.extend([series_line, ""])
+    desc_parts.extend(
+        [
+            f"📖 {theme.strip().capitalize() or 'Histórias bíblicas'}",
+            f"Canal: {brand}",
+            "",
+        ]
+    )
+    if voice:
+        desc_parts.extend([f"Tom: {voice}", ""])
+    if caption_style:
+        desc_parts.extend([f"Legendas: {caption_style}", ""])
+    desc_parts.extend(
+        [
+            f"Vídeo produzido pelo Histórias Bíblicas Studio para {brand}.",
+            "Inscreva-se para mais histórias da Bíblia.",
+            "",
+            "#HistoriasBiblicas #Biblia #Fe",
+        ]
+    )
+    if brand and "prosperidade" in brand.lower():
+        desc_parts.append("#ProsperidadeEFe")
     description = "\n".join(desc_parts).strip()
 
-    words = re.findall(r"[A-Za-zÀ-ÿ0-9]+", f"{clean_title} {theme}")
+    words = re.findall(r"[A-Za-zÀ-ÿ0-9]+", f"{clean_title} {theme} {series} {brand}")
     tags = ["histórias bíblicas", "bíblia", "história bíblica", "youtube", "fé"]
+    if series and series.lower() not in {t.lower() for t in tags}:
+        tags.append(series)
+    if brand and brand.lower() not in {t.lower() for t in tags}:
+        tags.append(brand)
     for w in words:
         lw = w.lower()
         if len(lw) < 3 or lw in STOP:
