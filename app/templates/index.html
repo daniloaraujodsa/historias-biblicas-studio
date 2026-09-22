@@ -24,6 +24,42 @@
   </form>
 </section>
 
+<section class="card plan-home">
+  <h2>Planejar com a equipe</h2>
+  <p class="muted">
+    Um breve vira esboço de cenas, direção de arte e pacote do YouTube.
+    O projeto abre com o plano para revisar — o roteiro só muda quando você aplicar.
+  </p>
+  <form method="post" action="/api/projects/planejar" class="stack">
+    <label>História, passagem ou tema
+      <textarea name="brief" rows="3" maxlength="800" required placeholder="Ex.: Rute no campo de Boaz, Rute 2"></textarea>
+    </label>
+    <label>Tema
+      <input name="theme" value="{{ default_theme }}" />
+    </label>
+    <fieldset class="aspect-pills">
+      <legend>Formato</legend>
+      <label class="pill">
+        <input type="radio" name="aspect" value="16:9" checked />
+        YouTube 16:9
+      </label>
+      <label class="pill">
+        <input type="radio" name="aspect" value="9:16" />
+        Shorts 9:16
+      </label>
+    </fieldset>
+    <div class="field-grid field-grid-2">
+      <label>Série (opcional)
+        <input name="series_name" maxlength="80" placeholder="Ex.: Heróis da fé" />
+      </label>
+      <label>Episódio
+        <input name="episode_number" type="number" min="1" step="1" placeholder="Ex.: 1" />
+      </label>
+    </div>
+    <button type="submit" class="btn btn-primary">Planejar com equipe</button>
+  </form>
+</section>
+
 <section class="grid-2">
   <div class="card">
     <h2>Novo projeto</h2>

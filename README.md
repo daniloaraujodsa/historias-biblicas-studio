@@ -84,6 +84,20 @@ Na seção **Biblioteca de prompts**:
 
 No **Roteiro**, quatro modelos de arco (queda e graça, confronto e fé, chamado e libertação, julgamento e aliança) preenchem um esboço em português para editar.
 
+## Planejamento da equipe
+
+Na home ou no projeto, escreva um breve (história, passagem ou tema) e clique em **Planejar com equipe**.
+
+O estúdio monta o plano em três etapas, sem API externa:
+
+1. **Roteirista** — cenas, narração e referências bíblicas
+2. **Diretor de arte** — luz, câmera, atmosfera e notas por cena (entram no prompt da imagem; a câmera fica na cena)
+3. **Editor YouTube** — gancho, título, descrição e tags, usando série, episódio e marca
+
+O plano fica salvo no projeto. **Aplicar ao projeto** preenche só o que estiver marcado: roteiro e cenas, notas visuais (luz, atmosfera, biblioteca) e pacote do YouTube. Formato, áudio, marca, série e estilo visual não mudam. Se já houver roteiro ou metadados, a página pede confirmação. Imagens já geradas na mesma posição de cena são mantidas.
+
+Caminho rápido: breve «Rute no campo de Boaz» → **Planejar com equipe** → revisar as três mesas → **Aplicar ao projeto** → roteiro, cenas e campos do YouTube preenchidos.
+
 Em **Publicar**, o botão **Preencher título e descrição padrão** monta os metadados (série, episódio e marca) sem precisar renderizar de novo.
 
 ## O que o pipeline gera
@@ -131,7 +145,7 @@ No projeto, cadastre nome, papel e bíblia visual. O editor de cenas tem um camp
 - edge-tts / gTTS / espeak
 - Grok Imagine / Pollinations / OpenAI + Pillow
 - FFmpeg (Ken Burns, legendas, mix de trilha)
-- SQLite (`projects`, `characters`, `jobs`)
+- SQLite (`projects`, `characters`, `jobs`, `prompt_blocks`, `production_plans`)
 
 ## Limitações
 
@@ -142,7 +156,7 @@ No projeto, cadastre nome, papel e bíblia visual. O editor de cenas tem um camp
 ## Testes
 
 ```bash
-PYTHONPATH=. python3 -m unittest tests.test_studio_controls
+PYTHONPATH=. python3 -m unittest tests.test_studio_controls tests.test_planning
 ```
 
 ## Licença

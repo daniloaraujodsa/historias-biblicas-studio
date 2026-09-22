@@ -15,9 +15,14 @@ from app import db
 from app.config import DEFAULT_THEME, DEFAULT_VOICE, EXPORTS_DIR, PORT, PROJECTS_DIR
 from app.services import images, jobs, pipeline, publish, scenes, tts
 from app.services import audio_mode, brand, prompt_library, story_templates, visual
+from app.services.planning import (
+    apply_plan_fields,
+    compose_plan_for_project,
+    suggest_title,
+)
 from app.services.prompt_library import apply_block_to_project
 
-app = FastAPI(title="Histórias Bíblicas Studio", version="1.3.0")
+app = FastAPI(title="Histórias Bíblicas Studio", version="1.4.0")
 
 TEMPLATES_DIR = Path(__file__).parent / "templates"
 STATIC_DIR = Path(__file__).parent / "static"
@@ -125,6 +130,8 @@ async def project_page(request: Request, project_id: str) -> Any:
             prompt_categories=prompt_library.category_options(),
             prompt_targets=prompt_library.target_options(),
             brand_defaults=brand.default_brand_values(),
+            production_plan=db.latest_production_plan(project_id),
+            previous_plans=db.list_production_plans(project_id)[1:],
         ),
     )
 
@@ -150,6 +157,32 @@ async def api_create_project(
     )
     _project_dir(project["id"])
     return RedirectResponse(f"/projects/{project['id']}", status_code=303)
+
+
+@app.post("/api/projects/planejar")
+async def api_plan_new_project(
+    brief: str = Form(""),
+    theme: str = Form(DEFAULT_THEME),
+    aspect: str = Form("16:9"),
+    series_name: str = Form(""),
+    episode_number: str = Form(""),
+) -> RedirectResponse:
+    brief = (brief or "").strip()
+    if not brief:
+        raise HTTPException(400, "Escreva um breve para a equipe planejar.")
+    title = suggest_title(brief)
+    theme = (theme or "").strip() or DEFAULT_THEME
+    project = db.create_project(title, theme, aspect=aspect)
+    pid = project["id"]
+    _project_dir(pid)
+    db.update_project(pid, series_name=series_name, episode_number=episode_number)
+    project = db.get_project(pid) or project
+    try:
+        plan = compose_plan_for_project(project, brief)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+    db.create_production_plan(pid, plan["brief"], plan)
+    return RedirectResponse(f"/projects/{pid}#planejamento", status_code=303)
 
 
 @app.post("/api/projects/demo-davi-golias")
@@ -229,6 +262,68 @@ async def api_settings(
         **brand_fields,
     )
     return RedirectResponse(f"/projects/{project_id}#formato", status_code=303)
+
+
+def _apply_flags(*values: str) -> list[bool]:
+    return [value in ("on", "1", "true", "yes") for value in values]
+
+
+@app.post("/api/projects/{project_id}/planejar")
+async def api_plan_project(project_id: str, brief: str = Form("")) -> RedirectResponse:
+    project = db.get_project(project_id)
+    if not project:
+        raise HTTPException(404)
+    brief = (brief or "").strip()
+    if not brief:
+        raise HTTPException(400, "Escreva um breve para a equipe planejar.")
+    try:
+        plan = compose_plan_for_project(project, brief)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+    db.create_production_plan(project_id, plan["brief"], plan)
+    return RedirectResponse(f"/projects/{project_id}#planejamento", status_code=303)
+
+
+@app.post("/api/projects/{project_id}/planejar/{plan_id}/aplicar")
+async def api_apply_production_plan(
+    project_id: str,
+    plan_id: str,
+    apply_script: str = Form(""),
+    apply_visual: str = Form(""),
+    apply_youtube: str = Form(""),
+) -> RedirectResponse:
+    project = db.get_project(project_id)
+    row = db.get_production_plan(plan_id)
+    if not project or not row or row.get("project_id") != project_id:
+        raise HTTPException(404, "Plano não encontrado")
+    use_script, use_visual, use_youtube = _apply_flags(apply_script, apply_visual, apply_youtube)
+    if not any((use_script, use_visual, use_youtube)):
+        return RedirectResponse(f"/projects/{project_id}#planejamento", status_code=303)
+    try:
+        patch = apply_plan_fields(
+            project,
+            row.get("plan") or {},
+            script=use_script,
+            visual=use_visual,
+            youtube=use_youtube,
+        )
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+    scenes_out = patch.pop("scenes", None)
+    if scenes_out is not None:
+        patch["scenes_json"] = db.scenes_to_json(scenes_out)
+    if patch:
+        db.update_project(project_id, **patch)
+        db.mark_production_plan_applied(plan_id)
+    if use_script:
+        anchor = "#roteiro"
+    elif use_youtube:
+        anchor = "#publicar"
+    elif use_visual:
+        anchor = "#formato"
+    else:
+        anchor = "#planejamento"
+    return RedirectResponse(f"/projects/{project_id}{anchor}", status_code=303)
 
 
 @app.post("/api/projects/{project_id}/story-template")
@@ -761,7 +856,7 @@ async def health() -> JSONResponse:
         {
             "ok": True,
             "app": "Histórias Bíblicas Studio",
-            "version": "1.3.0",
+            "version": "1.4.0",
             "port": PORT,
             "image_provider": images.active_provider_label(),
         }

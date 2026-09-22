@@ -9,6 +9,7 @@ from app import db
 from app.config import EXPORTS_DIR, PROJECTS_DIR
 from app.services import captions, demo_script, images, publish, scenes, tts, video
 from app.services.audio_mode import resolve_mode, uses_narration
+from app.services.planning import scene_prompt_kwargs
 from app.services.visual import project_visual_kwargs
 
 ProgressFn = Callable[[int, str], None]
@@ -31,7 +32,7 @@ def _gen_image(project_id: str, scene: dict, out: Path, seed_salt: int = 0) -> t
     title = scene.get("title") or f"Cena {idx + 1}"
     scene_text = scene.get("text") or ""
     cast = scene.get("cast") or ""
-    look = project_visual_kwargs(project)
+    look = scene_prompt_kwargs(project_visual_kwargs(project), scene)
     path, source = images.generate_scene_image(
         title,
         scene_text,
