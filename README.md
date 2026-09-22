@@ -61,9 +61,22 @@ Abra a interface na porta **8080**.
 ### Demo Davi e Golias
 
 1. Na home, escolha 16:9 ou Shorts 9:16 e clique em **Abrir demo Davi e Golias**
-2. Ajuste formato, legendas e trilha em **Formato e opções**
+2. Ajuste formato, estilo visual, luz/câmera/atmosfera, áudio e série em **Formato e opções**
 3. Clique em **Pipeline completo** e acompanhe a barra de progresso
 4. Veja o preview, edite título/descrição/tags e baixe o ZIP
+
+## Controles do projeto
+
+Na aba **Formato**:
+
+- **Estilo visual** (padrão: Cinemático bíblico). Também há pintura a óleo sacra, ilustração digital, semi-realista 3D, aquarela e alto contraste. O estilo entra em todo prompt de imagem.
+- **Luz, câmera e atmosfera** — presets opcionais compostos no mesmo prompt (luz dourada, Rembrandt, close, deserto, templo, etc.).
+- **Áudio do vídeo**: só narração, só trilha, narração e trilha, ou sem áudio. Sem narração, a duração de cada cena é estimada pelo texto.
+- **Série e episódio** (opcionais). Aparecem na lista da home e no título/descrição padrão do YouTube.
+
+No **Roteiro**, quatro modelos de arco (queda e graça, confronto e fé, chamado e libertação, julgamento e aliança) preenchem um esboço em português para editar.
+
+Em **Publicar**, o botão **Preencher título e descrição padrão** monta os metadados sem precisar renderizar de novo.
 
 ## O que o pipeline gera
 
@@ -115,8 +128,14 @@ No projeto, cadastre nome, papel e bíblia visual. O editor de cenas tem um camp
 ## Limitações
 
 - Pollinations anônimo tem fila curta (429) — retries ajudam, o pipeline fica mais lento.
-- A trilha é um leito sintético (senoides graves), não uma faixa licenciada.
+- A trilha (com narração ou sozinha) é um leito sintético (senoides graves), não uma faixa licenciada.
 - Sem upload direto para o YouTube / OAuth.
+
+## Testes
+
+```bash
+PYTHONPATH=. python3 -m unittest tests.test_studio_controls
+```
 
 ## Licença
 

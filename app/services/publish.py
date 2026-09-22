@@ -18,11 +18,35 @@ STOP = {
 }
 
 
-def generate_metadata(title: str, theme: str, script: str) -> dict[str, str]:
+def generate_metadata(
+    title: str,
+    theme: str,
+    script: str,
+    *,
+    series_name: str = "",
+    episode_number: int | None = None,
+) -> dict[str, str]:
     clean_title = (title or "História bíblica").strip()
-    yt_title = clean_title
-    if "bíblic" not in clean_title.lower() and "biblic" not in clean_title.lower():
-        yt_title = f"{clean_title} | História Bíblica"
+    series = (series_name or "").strip()
+    episode: int | None = None
+    if episode_number not in (None, ""):
+        try:
+            parsed = int(episode_number)  # type: ignore[arg-type]
+        except (TypeError, ValueError):
+            parsed = 0
+        if parsed >= 1:
+            episode = parsed
+
+    if series and episode:
+        yt_title = f"{series} — Ep. {episode} · {clean_title}"
+    elif series:
+        yt_title = f"{series} — {clean_title}"
+    else:
+        yt_title = clean_title
+    biblical = "bíblic" in yt_title.lower() or "biblic" in yt_title.lower()
+    if not biblical:
+        with_tag = f"{yt_title} | História Bíblica"
+        yt_title = with_tag if len(with_tag) <= 95 else yt_title
     if len(yt_title) > 95:
         yt_title = yt_title[:92] + "…"
 
@@ -30,20 +54,28 @@ def generate_metadata(title: str, theme: str, script: str) -> dict[str, str]:
     lead = re.split(r"\n\s*\n", body)[0].strip() if body else ""
     if len(lead) > 400:
         lead = lead[:397] + "…"
-    desc_parts = [
-        lead,
-        "",
-        f"📖 {theme.strip().capitalize() or 'Histórias bíblicas'}",
-        "",
-        "Vídeo narrado automaticamente pelo Histórias Bíblicas Studio.",
-        "Inscreva-se para mais histórias da Bíblia.",
-        "",
-        "#HistoriasBiblicas #Biblia #Fe",
-    ]
+    desc_parts = [lead, ""]
+    if series:
+        series_line = f"Série: {series}"
+        if episode:
+            series_line += f" · Episódio {episode}"
+        desc_parts.extend([series_line, ""])
+    desc_parts.extend(
+        [
+            f"📖 {theme.strip().capitalize() or 'Histórias bíblicas'}",
+            "",
+            "Vídeo narrado automaticamente pelo Histórias Bíblicas Studio.",
+            "Inscreva-se para mais histórias da Bíblia.",
+            "",
+            "#HistoriasBiblicas #Biblia #Fe",
+        ]
+    )
     description = "\n".join(desc_parts).strip()
 
-    words = re.findall(r"[A-Za-zÀ-ÿ0-9]+", f"{clean_title} {theme}")
+    words = re.findall(r"[A-Za-zÀ-ÿ0-9]+", f"{clean_title} {theme} {series}")
     tags = ["histórias bíblicas", "bíblia", "história bíblica", "youtube", "fé"]
+    if series and series.lower() not in {t.lower() for t in tags}:
+        tags.append(series)
     for w in words:
         lw = w.lower()
         if len(lw) < 3 or lw in STOP:

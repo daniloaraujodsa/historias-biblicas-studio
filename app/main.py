@@ -13,9 +13,10 @@ from fastapi.templating import Jinja2Templates
 
 from app import db
 from app.config import DEFAULT_THEME, DEFAULT_VOICE, EXPORTS_DIR, PORT, PROJECTS_DIR
-from app.services import images, jobs, pipeline, scenes, tts
+from app.services import images, jobs, pipeline, publish, scenes, tts
+from app.services import audio_mode, story_templates, visual
 
-app = FastAPI(title="Histórias Bíblicas Studio", version="1.1.0")
+app = FastAPI(title="Histórias Bíblicas Studio", version="1.2.0")
 
 TEMPLATES_DIR = Path(__file__).parent / "templates"
 STATIC_DIR = Path(__file__).parent / "static"
@@ -111,6 +112,19 @@ async def project_page(request: Request, project_id: str) -> Any:
             image_provider_label=images.active_provider_label(),
             job=job,
             status_label=STATUS_LABELS.get(project.get("status") or "", project.get("status") or ""),
+            visual_styles=visual.style_options(),
+            light_presets=visual.light_options(),
+            camera_presets=visual.camera_options(),
+            atmosphere_presets=visual.atmosphere_options(),
+            audio_modes=audio_mode.mode_options(),
+            story_templates=story_templates.list_templates(),
+            visual_style_label=visual.label_for_style(project.get("visual_style")),
+            visual_prompt_preview=visual.compose_visual_block(
+                project.get("visual_style"),
+                project.get("light_preset"),
+                project.get("camera_preset"),
+                project.get("atmosphere_preset"),
+            ),
         ),
     )
 
@@ -123,10 +137,17 @@ async def api_create_project(
     title: str = Form(...),
     theme: str = Form(DEFAULT_THEME),
     aspect: str = Form("16:9"),
+    series_name: str = Form(""),
+    episode_number: str = Form(""),
 ) -> RedirectResponse:
     title = title.strip() or "Novo projeto"
     theme = theme.strip() or DEFAULT_THEME
     project = db.create_project(title, theme, aspect=aspect)
+    db.update_project(
+        project["id"],
+        series_name=series_name,
+        episode_number=episode_number,
+    )
     _project_dir(project["id"])
     return RedirectResponse(f"/projects/{project['id']}", status_code=303)
 
@@ -168,7 +189,13 @@ async def api_settings(
     project_id: str,
     aspect: str = Form("16:9"),
     burn_captions: str = Form("off"),
-    add_music: str = Form("off"),
+    audio_mode: str = Form("both"),
+    visual_style: str = Form("cinematic"),
+    light_preset: str = Form(""),
+    camera_preset: str = Form(""),
+    atmosphere_preset: str = Form(""),
+    series_name: str = Form(""),
+    episode_number: str = Form(""),
 ) -> RedirectResponse:
     if not db.get_project(project_id):
         raise HTTPException(404)
@@ -176,9 +203,34 @@ async def api_settings(
         project_id,
         aspect="9:16" if aspect == "9:16" else "16:9",
         burn_captions=1 if burn_captions in ("on", "1", "true") else 0,
-        add_music=1 if add_music in ("on", "1", "true") else 0,
+        audio_mode=audio_mode,
+        visual_style=visual_style,
+        light_preset=light_preset,
+        camera_preset=camera_preset,
+        atmosphere_preset=atmosphere_preset,
+        series_name=series_name,
+        episode_number=episode_number,
     )
-    return RedirectResponse(f"/projects/{project_id}", status_code=303)
+    return RedirectResponse(f"/projects/{project_id}#formato", status_code=303)
+
+
+@app.post("/api/projects/{project_id}/story-template")
+async def api_apply_story_template(
+    project_id: str,
+    template_id: str = Form(...),
+) -> RedirectResponse:
+    if not db.get_project(project_id):
+        raise HTTPException(404)
+    chosen = story_templates.get_template(template_id)
+    if not chosen:
+        raise HTTPException(404, "Modelo de história não encontrado")
+    db.update_project(
+        project_id,
+        script=chosen["script"].strip(),
+        scenes_json="[]",
+        status="script_ready",
+    )
+    return RedirectResponse(f"/projects/{project_id}#roteiro", status_code=303)
 
 
 @app.post("/api/projects/{project_id}/youtube")
@@ -196,6 +248,22 @@ async def api_youtube_meta(
         youtube_description=youtube_description.strip(),
         youtube_tags=youtube_tags.strip(),
     )
+    return RedirectResponse(f"/projects/{project_id}#publicar", status_code=303)
+
+
+@app.post("/api/projects/{project_id}/youtube/suggest")
+async def api_youtube_suggest(project_id: str) -> RedirectResponse:
+    project = db.get_project(project_id)
+    if not project:
+        raise HTTPException(404)
+    meta = publish.generate_metadata(
+        project.get("title") or "",
+        project.get("theme") or "",
+        project.get("script") or "",
+        series_name=project.get("series_name") or "",
+        episode_number=project.get("episode_number"),
+    )
+    db.update_project(project_id, **meta)
     return RedirectResponse(f"/projects/{project_id}#publicar", status_code=303)
 
 
@@ -616,7 +684,7 @@ async def health() -> JSONResponse:
         {
             "ok": True,
             "app": "Histórias Bíblicas Studio",
-            "version": "1.1.0",
+            "version": "1.2.0",
             "port": PORT,
             "image_provider": images.active_provider_label(),
         }

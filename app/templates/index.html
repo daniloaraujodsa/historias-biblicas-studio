@@ -47,6 +47,16 @@
           Shorts 9:16
         </label>
       </fieldset>
+      <div class="field-grid field-grid-2">
+        <label>
+          Série (opcional)
+          <input name="series_name" maxlength="80" placeholder="Ex.: Heróis da fé" />
+        </label>
+        <label>
+          Episódio
+          <input name="episode_number" type="number" min="1" step="1" placeholder="1" />
+        </label>
+      </div>
       <button type="submit" class="btn btn-primary">Criar projeto</button>
     </form>
   </div>
@@ -62,7 +72,10 @@
             <strong>{{ p.title }}</strong>
             <span class="badge">{{ p.aspect or '16:9' }}</span>
           </span>
-          <span class="meta">{{ p.theme }} · {{ status_labels.get(p.status, p.status) }}</span>
+          <span class="meta">
+            {{ p.theme }} · {{ status_labels.get(p.status, p.status) }}
+            {% if p.series_name %} · {{ p.series_name }}{% if p.episode_number %} Ep. {{ p.episode_number }}{% endif %}{% endif %}
+          </span>
         </a>
       </li>
       {% endfor %}

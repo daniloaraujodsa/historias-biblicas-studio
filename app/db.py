@@ -8,6 +8,8 @@ from typing import Any
 from uuid import uuid4
 
 from app.config import DB_PATH
+from app.services.audio_mode import normalize_audio_mode, uses_music
+from app.services.visual import normalize_preset, normalize_style
 
 
 def _now() -> str:
@@ -82,6 +84,20 @@ def init_db() -> None:
     _ensure_column(conn, "projects", "pack_path", "TEXT")
     _ensure_column(conn, "projects", "burn_captions", "INTEGER DEFAULT 1")
     _ensure_column(conn, "projects", "add_music", "INTEGER DEFAULT 1")
+    _ensure_column(conn, "projects", "visual_style", "TEXT DEFAULT 'cinematic'")
+    _ensure_column(conn, "projects", "light_preset", "TEXT DEFAULT ''")
+    _ensure_column(conn, "projects", "camera_preset", "TEXT DEFAULT ''")
+    _ensure_column(conn, "projects", "atmosphere_preset", "TEXT DEFAULT ''")
+    _ensure_column(conn, "projects", "audio_mode", "TEXT DEFAULT ''")
+    _ensure_column(conn, "projects", "series_name", "TEXT DEFAULT ''")
+    _ensure_column(conn, "projects", "episode_number", "INTEGER")
+    conn.execute(
+        """
+        UPDATE projects
+        SET audio_mode = CASE WHEN COALESCE(add_music, 1) = 1 THEN 'both' ELSE 'narration' END
+        WHERE audio_mode IS NULL OR TRIM(audio_mode) = ''
+        """
+    )
     conn.commit()
     conn.close()
 
@@ -99,8 +115,11 @@ def create_project(title: str, theme: str, aspect: str = "16:9") -> dict[str, An
     conn = get_conn()
     conn.execute(
         """
-        INSERT INTO projects (id, title, theme, script, status, scenes_json, aspect, created_at, updated_at)
-        VALUES (?, ?, ?, '', 'draft', '[]', ?, ?, ?)
+        INSERT INTO projects (
+            id, title, theme, script, status, scenes_json, aspect,
+            visual_style, audio_mode, created_at, updated_at
+        )
+        VALUES (?, ?, ?, '', 'draft', '[]', ?, 'cinematic', 'both', ?, ?)
         """,
         (pid, title, theme, aspect, now, now),
     )
@@ -141,10 +160,39 @@ def update_project(project_id: str, **fields: Any) -> dict[str, Any] | None:
         "pack_path",
         "burn_captions",
         "add_music",
+        "visual_style",
+        "light_preset",
+        "camera_preset",
+        "atmosphere_preset",
+        "audio_mode",
+        "series_name",
+        "episode_number",
     }
     updates = {k: v for k, v in fields.items() if k in allowed}
     if not updates:
         return get_project(project_id)
+    if "visual_style" in updates:
+        updates["visual_style"] = normalize_style(str(updates["visual_style"] or ""))
+    if "light_preset" in updates:
+        updates["light_preset"] = normalize_preset(str(updates["light_preset"] or ""), "light")
+    if "camera_preset" in updates:
+        updates["camera_preset"] = normalize_preset(str(updates["camera_preset"] or ""), "camera")
+    if "atmosphere_preset" in updates:
+        updates["atmosphere_preset"] = normalize_preset(
+            str(updates["atmosphere_preset"] or ""), "atmosphere"
+        )
+    if "series_name" in updates:
+        updates["series_name"] = str(updates["series_name"] or "").strip()[:80]
+    if "episode_number" in updates:
+        updates["episode_number"] = _parse_episode(updates["episode_number"])
+    if "audio_mode" in updates:
+        mode = normalize_audio_mode(str(updates["audio_mode"] or ""))
+        updates["audio_mode"] = mode
+        updates["add_music"] = 1 if uses_music(mode) else 0
+    elif "add_music" in updates:
+        on = updates["add_music"] in (1, True, "1", "on", "true")
+        updates["add_music"] = 1 if on else 0
+        updates["audio_mode"] = "both" if on else "narration"
     updates["updated_at"] = _now()
     cols = ", ".join(f"{k} = ?" for k in updates)
     values = list(updates.values()) + [project_id]
@@ -172,9 +220,29 @@ def _row_to_dict(row: sqlite3.Row) -> dict[str, Any]:
     except json.JSONDecodeError:
         d["scenes"] = []
     d["burn_captions"] = int(d.get("burn_captions") or 0) == 1
-    d["add_music"] = int(d.get("add_music") if d.get("add_music") is not None else 1) == 1
+    legacy_music = int(d.get("add_music") if d.get("add_music") is not None else 1) == 1
+    d["audio_mode"] = normalize_audio_mode(d.get("audio_mode"), music=legacy_music)
+    d["add_music"] = uses_music(d["audio_mode"])
     d["aspect"] = d.get("aspect") or "16:9"
+    d["visual_style"] = normalize_style(d.get("visual_style"))
+    d["light_preset"] = normalize_preset(d.get("light_preset"), "light")
+    d["camera_preset"] = normalize_preset(d.get("camera_preset"), "camera")
+    d["atmosphere_preset"] = normalize_preset(d.get("atmosphere_preset"), "atmosphere")
+    d["series_name"] = (d.get("series_name") or "").strip()
+    d["episode_number"] = _parse_episode(d.get("episode_number"))
     return d
+
+
+def _parse_episode(value: Any) -> int | None:
+    if value is None or isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return value if value >= 1 else None
+    text = str(value).strip()
+    if not text or not text.isdigit():
+        return None
+    number = int(text)
+    return number if number >= 1 else None
 
 
 def scenes_to_json(scenes: list[dict[str, Any]]) -> str:
