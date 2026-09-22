@@ -485,6 +485,54 @@ audio, video { width: 100%; margin-top: 0.5rem; border-radius: var(--radius-sm);
   line-height: 1.4;
 }
 .script-form { margin-top: 0.25rem; }
+.subhead {
+  margin: var(--space-4) 0 var(--space-2);
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--accent);
+}
+.library-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: var(--space-4);
+}
+.library-item {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.75rem;
+  align-items: start;
+  padding: 0.85rem;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+@media (max-width: 640px) {
+  .library-item { grid-template-columns: 1fr; }
+}
+.library-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 0.35rem;
+}
+.library-copy strong {
+  display: block;
+  font-family: var(--font-display);
+  margin-bottom: 0.25rem;
+}
+.library-copy p {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--text-sm);
+  line-height: 1.45;
+}
+.library-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
 
 .footer {
   text-align: center;

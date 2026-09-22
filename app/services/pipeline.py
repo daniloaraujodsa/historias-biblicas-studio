@@ -175,6 +175,9 @@ def run_render(project_id: str, report: ProgressFn | None = None) -> None:
         project.get("script") or "",
         series_name=project.get("series_name") or "",
         episode_number=project.get("episode_number"),
+        brand_name=project.get("brand_name") or "",
+        brand_voice=project.get("brand_voice") or "",
+        brand_caption_style=project.get("brand_caption_style") or "",
     )
     if (project.get("youtube_title") or "").strip():
         meta["youtube_title"] = project["youtube_title"].strip()

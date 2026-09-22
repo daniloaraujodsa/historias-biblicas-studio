@@ -14,9 +14,10 @@ from fastapi.templating import Jinja2Templates
 from app import db
 from app.config import DEFAULT_THEME, DEFAULT_VOICE, EXPORTS_DIR, PORT, PROJECTS_DIR
 from app.services import images, jobs, pipeline, publish, scenes, tts
-from app.services import audio_mode, story_templates, visual
+from app.services import audio_mode, brand, prompt_library, story_templates, visual
+from app.services.prompt_library import apply_block_to_project
 
-app = FastAPI(title="Histórias Bíblicas Studio", version="1.2.0")
+app = FastAPI(title="Histórias Bíblicas Studio", version="1.3.0")
 
 TEMPLATES_DIR = Path(__file__).parent / "templates"
 STATIC_DIR = Path(__file__).parent / "static"
@@ -119,12 +120,11 @@ async def project_page(request: Request, project_id: str) -> Any:
             audio_modes=audio_mode.mode_options(),
             story_templates=story_templates.list_templates(),
             visual_style_label=visual.label_for_style(project.get("visual_style")),
-            visual_prompt_preview=visual.compose_visual_block(
-                project.get("visual_style"),
-                project.get("light_preset"),
-                project.get("camera_preset"),
-                project.get("atmosphere_preset"),
-            ),
+            visual_prompt_preview=visual.compose_full_visual_preview(project),
+            prompt_blocks=db.list_prompt_blocks(project_id),
+            prompt_categories=prompt_library.category_options(),
+            prompt_targets=prompt_library.target_options(),
+            brand_defaults=brand.default_brand_values(),
         ),
     )
 
@@ -196,9 +196,24 @@ async def api_settings(
     atmosphere_preset: str = Form(""),
     series_name: str = Form(""),
     episode_number: str = Form(""),
+    prompt_extra: str = Form(""),
+    brand_name: str = Form(""),
+    brand_voice: str = Form(""),
+    brand_palette: str = Form(""),
+    brand_caption_style: str = Form(""),
+    brand_visual_notes: str = Form(""),
+    brand_logo_note: str = Form(""),
 ) -> RedirectResponse:
     if not db.get_project(project_id):
         raise HTTPException(404)
+    brand_fields = brand.brand_fields_from_form(
+        brand_name=brand_name,
+        brand_voice=brand_voice,
+        brand_palette=brand_palette,
+        brand_caption_style=brand_caption_style,
+        brand_visual_notes=brand_visual_notes,
+        brand_logo_note=brand_logo_note,
+    )
     db.update_project(
         project_id,
         aspect="9:16" if aspect == "9:16" else "16:9",
@@ -210,6 +225,8 @@ async def api_settings(
         atmosphere_preset=atmosphere_preset,
         series_name=series_name,
         episode_number=episode_number,
+        prompt_extra=prompt_extra,
+        **brand_fields,
     )
     return RedirectResponse(f"/projects/{project_id}#formato", status_code=303)
 
@@ -262,9 +279,69 @@ async def api_youtube_suggest(project_id: str) -> RedirectResponse:
         project.get("script") or "",
         series_name=project.get("series_name") or "",
         episode_number=project.get("episode_number"),
+        brand_name=project.get("brand_name") or "",
+        brand_voice=project.get("brand_voice") or "",
+        brand_caption_style=project.get("brand_caption_style") or "",
     )
     db.update_project(project_id, **meta)
     return RedirectResponse(f"/projects/{project_id}#publicar", status_code=303)
+
+
+@app.post("/api/projects/{project_id}/prompt-blocks")
+async def api_create_prompt_block(
+    project_id: str,
+    title: str = Form(...),
+    body: str = Form(...),
+    category: str = Form("cena"),
+    target: str = Form("prompt_extra"),
+    scope: str = Form("project"),
+) -> RedirectResponse:
+    if not db.get_project(project_id):
+        raise HTTPException(404)
+    title = title.strip()
+    body = body.strip()
+    if not title or not body:
+        raise HTTPException(400, "Título e texto do bloco são obrigatórios")
+    db.create_prompt_block(
+        title=title,
+        body=body,
+        category=category,
+        target=target,
+        project_id=None if scope == "app" else project_id,
+        is_seed=False,
+    )
+    return RedirectResponse(f"/projects/{project_id}#biblioteca", status_code=303)
+
+
+@app.post("/api/projects/{project_id}/prompt-blocks/{block_id}/apply")
+async def api_apply_prompt_block(project_id: str, block_id: str) -> RedirectResponse:
+    project = db.get_project(project_id)
+    block = db.get_prompt_block(block_id)
+    if not project or not block:
+        raise HTTPException(404)
+    if block.get("project_id") not in (None, project_id):
+        raise HTTPException(404)
+    patch = apply_block_to_project(project, block)
+    if patch:
+        if "script" in patch:
+            patch["status"] = "script_ready"
+        db.update_project(project_id, **patch)
+    anchor = "#roteiro" if block.get("target") == "script" else "#formato"
+    return RedirectResponse(f"/projects/{project_id}{anchor}", status_code=303)
+
+
+@app.post("/api/projects/{project_id}/prompt-blocks/{block_id}/delete")
+async def api_delete_prompt_block(project_id: str, block_id: str) -> RedirectResponse:
+    if not db.get_project(project_id):
+        raise HTTPException(404)
+    block = db.get_prompt_block(block_id)
+    if not block:
+        raise HTTPException(404)
+    # Só apaga bloco do próprio projeto (sementes globais ficam).
+    if block.get("project_id") != project_id:
+        raise HTTPException(403, "Só é possível excluir blocos deste projeto")
+    db.delete_prompt_block(block_id, allow_seed=False)
+    return RedirectResponse(f"/projects/{project_id}#biblioteca", status_code=303)
 
 
 # ---------- Jobs / pipeline ----------
@@ -684,7 +761,7 @@ async def health() -> JSONResponse:
         {
             "ok": True,
             "app": "Histórias Bíblicas Studio",
-            "version": "1.2.0",
+            "version": "1.3.0",
             "port": PORT,
             "image_provider": images.active_provider_label(),
         }

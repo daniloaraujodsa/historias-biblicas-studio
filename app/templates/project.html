@@ -32,6 +32,9 @@
       · <span class="badge">{{ status_label }}</span>
       · <span class="badge">{{ project.aspect or '16:9' }}</span>
       · <span class="badge">{{ visual_style_label }}</span>
+      {% if project.brand_name %}
+      · <span class="badge">{{ project.brand_name }}</span>
+      {% endif %}
       {% if project.series_name %}
       · <span class="badge">{{ project.series_name }}{% if project.episode_number %} · Ep. {{ project.episode_number }}{% endif %}</span>
       {% endif %}
@@ -44,6 +47,8 @@
 
 <nav class="jump">
   <a href="#formato">Formato</a>
+  <a href="#marca">Marca</a>
+  <a href="#biblioteca">Biblioteca</a>
   <a href="#roteiro">Roteiro</a>
   <a href="#personagens">Elenco</a>
   <a href="#producao">Produção</a>
@@ -114,6 +119,11 @@
     <p class="hint">Trecho do prompt de imagem:</p>
     <pre class="prompt-preview">{{ visual_prompt_preview }}</pre>
 
+    <label>Notas extras de imagem
+      <textarea name="prompt_extra" rows="3" placeholder="Blocos da biblioteca e anotações livres entram aqui…">{{ project.prompt_extra or '' }}</textarea>
+    </label>
+    <p class="hint">Texto acrescentado a cada geração de imagem (além do estilo, luz, câmera e marca).</p>
+
     <fieldset class="aspect-pills">
       <legend>Áudio do vídeo</legend>
       {% for opt in audio_modes %}
@@ -131,8 +141,107 @@
       <input type="checkbox" name="burn_captions" value="on" {% if project.burn_captions %}checked{% endif %} />
       Gravar legendas no vídeo
     </label>
+
+    <h3 class="subhead" id="marca">Identidade visual</h3>
+    <p class="muted">Marca do canal ou do projeto. Entra no prompt de imagem e no pacote do YouTube.</p>
+    <label>Nome da marca
+      <input name="brand_name" maxlength="80" value="{{ project.brand_name or '' }}" placeholder="{{ brand_defaults.brand_name }}" />
+    </label>
+    <label>Tom de voz
+      <textarea name="brand_voice" rows="2" placeholder="{{ brand_defaults.brand_voice }}">{{ project.brand_voice or '' }}</textarea>
+    </label>
+    <label>Paleta / cores preferidas
+      <textarea name="brand_palette" rows="2" placeholder="{{ brand_defaults.brand_palette }}">{{ project.brand_palette or '' }}</textarea>
+    </label>
+    <label>Estilo de legenda na tela
+      <textarea name="brand_caption_style" rows="2" placeholder="{{ brand_defaults.brand_caption_style }}">{{ project.brand_caption_style or '' }}</textarea>
+    </label>
+    <label>Notas de consistência visual
+      <textarea name="brand_visual_notes" rows="3" placeholder="{{ brand_defaults.brand_visual_notes }}">{{ project.brand_visual_notes or '' }}</textarea>
+    </label>
+    <label>Nota de logo / referência (texto ou caminho)
+      <input name="brand_logo_note" maxlength="240" value="{{ project.brand_logo_note or '' }}" placeholder="Ex.: logo dourado no canto — arquivo em references/logo.txt" />
+    </label>
+
     <button type="submit" class="btn btn-primary">Salvar opções</button>
   </form>
+</section>
+
+<section class="card" id="biblioteca">
+  <h2>Biblioteca de prompts</h2>
+  <p class="muted">
+    Blocos reutilizáveis em português. Aplicar acrescenta o texto às notas de imagem, ao roteiro
+    ou às notas da marca. Os exemplos iniciais são do estúdio; os do projeto podem ser excluídos.
+  </p>
+  {% if prompt_blocks %}
+  <div class="library-list">
+    {% for block in prompt_blocks %}
+    <article class="library-item">
+      <div class="library-copy">
+        <div class="library-meta">
+          <span class="badge">{% for c in prompt_categories %}{% if c.id == block.category %}{{ c.label }}{% endif %}{% endfor %}</span>
+          <span class="badge">{% for t in prompt_targets %}{% if t.id == block.target %}{{ t.label }}{% endif %}{% endfor %}</span>
+          {% if block.is_seed %}<span class="badge">Estúdio</span>{% elif not block.project_id %}<span class="badge">App</span>{% else %}<span class="badge">Projeto</span>{% endif %}
+        </div>
+        <strong>{{ block.title }}</strong>
+        <p>{{ block.body }}</p>
+      </div>
+      <div class="library-actions">
+        <form method="post" action="/api/projects/{{ project.id }}/prompt-blocks/{{ block.id }}/apply">
+          <button type="submit" class="btn btn-primary btn-sm">Aplicar</button>
+        </form>
+        {% if block.project_id == project.id and not block.is_seed %}
+        <form method="post" action="/api/projects/{{ project.id }}/prompt-blocks/{{ block.id }}/delete" onsubmit="return confirm('Excluir este bloco?');">
+          <button type="submit" class="btn btn-danger btn-sm">Excluir</button>
+        </form>
+        {% endif %}
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="muted">Nenhum bloco ainda. Salve um abaixo ou recarregue para carregar os exemplos.</p>
+  {% endif %}
+
+  <details class="add-character" open>
+    <summary>Salvar novo bloco</summary>
+    <form method="post" action="/api/projects/{{ project.id }}/prompt-blocks" class="stack">
+      <label>Título
+        <input name="title" required maxlength="80" placeholder="Ex.: Luz de acampamento" />
+      </label>
+      <div class="field-grid field-grid-2">
+        <label>Categoria
+          <select name="category">
+            {% for c in prompt_categories %}
+            <option value="{{ c.id }}">{{ c.label }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label>Aplicar em
+          <select name="target">
+            {% for t in prompt_targets %}
+            <option value="{{ t.id }}">{{ t.label }}</option>
+            {% endfor %}
+          </select>
+        </label>
+      </div>
+      <label>Texto do bloco
+        <textarea name="body" rows="3" required placeholder="Trecho curto em português…"></textarea>
+      </label>
+      <fieldset class="aspect-pills">
+        <legend>Escopo</legend>
+        <label class="pill">
+          <input type="radio" name="scope" value="project" checked />
+          Só este projeto
+        </label>
+        <label class="pill">
+          <input type="radio" name="scope" value="app" />
+          Biblioteca do app
+        </label>
+      </fieldset>
+      <button type="submit" class="btn btn-primary">Salvar bloco</button>
+    </form>
+  </details>
 </section>
 
 <section class="card" id="roteiro">

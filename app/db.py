@@ -9,6 +9,12 @@ from uuid import uuid4
 
 from app.config import DB_PATH
 from app.services.audio_mode import normalize_audio_mode, uses_music
+from app.services.brand import BRAND_FIELDS, default_brand_values
+from app.services.prompt_library import (
+    normalize_category,
+    normalize_target,
+    seed_specs,
+)
 from app.services.visual import normalize_preset, normalize_style
 
 
@@ -91,6 +97,32 @@ def init_db() -> None:
     _ensure_column(conn, "projects", "audio_mode", "TEXT DEFAULT ''")
     _ensure_column(conn, "projects", "series_name", "TEXT DEFAULT ''")
     _ensure_column(conn, "projects", "episode_number", "INTEGER")
+    _ensure_column(conn, "projects", "prompt_extra", "TEXT DEFAULT ''")
+    for _brand_key, _brand_default in default_brand_values().items():
+        decl = "TEXT DEFAULT ''"
+        if _brand_key != "brand_logo_note" and _brand_default:
+            # Valor padrão aplicado na leitura / create; coluna inicia vazia.
+            decl = "TEXT DEFAULT ''"
+        _ensure_column(conn, "projects", _brand_key, decl)
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS prompt_blocks (
+            id TEXT PRIMARY KEY,
+            project_id TEXT,
+            title TEXT NOT NULL,
+            category TEXT NOT NULL DEFAULT 'cena',
+            target TEXT NOT NULL DEFAULT 'prompt_extra',
+            body TEXT NOT NULL DEFAULT '',
+            is_seed INTEGER DEFAULT 0,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+        )
+        """
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_prompt_blocks_project ON prompt_blocks(project_id)"
+    )
     conn.execute(
         """
         UPDATE projects
@@ -100,6 +132,7 @@ def init_db() -> None:
     )
     conn.commit()
     conn.close()
+    seed_prompt_library()
 
 
 def _ensure_column(conn: sqlite3.Connection, table: str, name: str, decl: str) -> None:
@@ -112,16 +145,37 @@ def create_project(title: str, theme: str, aspect: str = "16:9") -> dict[str, An
     pid = str(uuid4())
     now = _now()
     aspect = "9:16" if aspect in ("9:16", "shorts", "vertical") else "16:9"
+    brand = default_brand_values()
     conn = get_conn()
     conn.execute(
         """
         INSERT INTO projects (
             id, title, theme, script, status, scenes_json, aspect,
-            visual_style, audio_mode, created_at, updated_at
+            visual_style, audio_mode,
+            brand_name, brand_voice, brand_palette, brand_caption_style,
+            brand_visual_notes, brand_logo_note,
+            created_at, updated_at
         )
-        VALUES (?, ?, ?, '', 'draft', '[]', ?, 'cinematic', 'both', ?, ?)
+        VALUES (
+            ?, ?, ?, '', 'draft', '[]', ?, 'cinematic', 'both',
+            ?, ?, ?, ?, ?, ?,
+            ?, ?
+        )
         """,
-        (pid, title, theme, aspect, now, now),
+        (
+            pid,
+            title,
+            theme,
+            aspect,
+            brand["brand_name"],
+            brand["brand_voice"],
+            brand["brand_palette"],
+            brand["brand_caption_style"],
+            brand["brand_visual_notes"],
+            brand["brand_logo_note"],
+            now,
+            now,
+        ),
     )
     conn.commit()
     conn.close()
@@ -167,6 +221,8 @@ def update_project(project_id: str, **fields: Any) -> dict[str, Any] | None:
         "audio_mode",
         "series_name",
         "episode_number",
+        "prompt_extra",
+        *BRAND_FIELDS,
     }
     updates = {k: v for k, v in fields.items() if k in allowed}
     if not updates:
@@ -185,6 +241,19 @@ def update_project(project_id: str, **fields: Any) -> dict[str, Any] | None:
         updates["series_name"] = str(updates["series_name"] or "").strip()[:80]
     if "episode_number" in updates:
         updates["episode_number"] = _parse_episode(updates["episode_number"])
+    if "prompt_extra" in updates:
+        updates["prompt_extra"] = str(updates["prompt_extra"] or "").strip()
+    for brand_key in BRAND_FIELDS:
+        if brand_key not in updates:
+            continue
+        text = str(updates[brand_key] or "").strip()
+        if brand_key == "brand_name":
+            text = text[:80]
+        elif brand_key == "brand_logo_note":
+            text = text[:240]
+        else:
+            text = text[:500]
+        updates[brand_key] = text
     if "audio_mode" in updates:
         mode = normalize_audio_mode(str(updates["audio_mode"] or ""))
         updates["audio_mode"] = mode
@@ -230,6 +299,17 @@ def _row_to_dict(row: sqlite3.Row) -> dict[str, Any]:
     d["atmosphere_preset"] = normalize_preset(d.get("atmosphere_preset"), "atmosphere")
     d["series_name"] = (d.get("series_name") or "").strip()
     d["episode_number"] = _parse_episode(d.get("episode_number"))
+    d["prompt_extra"] = (d.get("prompt_extra") or "").strip()
+    brand_defaults = default_brand_values()
+    for key in BRAND_FIELDS:
+        raw = (d.get(key) or "").strip() if isinstance(d.get(key), str) else (d.get(key) or "")
+        if isinstance(raw, str):
+            raw = raw.strip()
+        else:
+            raw = str(raw or "").strip()
+        if not raw and key != "brand_logo_note":
+            raw = brand_defaults[key]
+        d[key] = raw
     return d
 
 
@@ -374,6 +454,124 @@ def seed_demo_characters(project_id: str) -> list[dict[str, Any]]:
                 name=spec["name"],
                 role=spec["role"],
                 visual_bible=spec["visual_bible"],
+            )
+        )
+    return created
+
+
+# ---------- Biblioteca de prompts ----------
+
+
+def _block_row_to_dict(row: sqlite3.Row) -> dict[str, Any]:
+    d = dict(row)
+    d["is_seed"] = int(d.get("is_seed") or 0) == 1
+    d["category"] = normalize_category(d.get("category"))
+    d["target"] = normalize_target(d.get("target"))
+    d["title"] = (d.get("title") or "").strip()
+    d["body"] = (d.get("body") or "").strip()
+    return d
+
+
+def create_prompt_block(
+    *,
+    title: str,
+    body: str,
+    category: str = "cena",
+    target: str = "prompt_extra",
+    project_id: str | None = None,
+    is_seed: bool = False,
+) -> dict[str, Any]:
+    bid = str(uuid4())
+    now = _now()
+    title = (title or "").strip() or "Bloco sem título"
+    body = (body or "").strip()
+    conn = get_conn()
+    conn.execute(
+        """
+        INSERT INTO prompt_blocks
+          (id, project_id, title, category, target, body, is_seed, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            bid,
+            project_id,
+            title[:80],
+            normalize_category(category),
+            normalize_target(target),
+            body,
+            1 if is_seed else 0,
+            now,
+            now,
+        ),
+    )
+    conn.commit()
+    conn.close()
+    return get_prompt_block(bid)  # type: ignore[return-value]
+
+
+def get_prompt_block(block_id: str) -> dict[str, Any] | None:
+    conn = get_conn()
+    row = conn.execute("SELECT * FROM prompt_blocks WHERE id = ?", (block_id,)).fetchone()
+    conn.close()
+    return _block_row_to_dict(row) if row else None
+
+
+def list_prompt_blocks(project_id: str | None = None) -> list[dict[str, Any]]:
+    """Lista blocos globais (semente/app) e, se houver, do projeto."""
+    conn = get_conn()
+    if project_id:
+        rows = conn.execute(
+            """
+            SELECT * FROM prompt_blocks
+            WHERE project_id IS NULL OR project_id = ?
+            ORDER BY
+              CASE WHEN project_id IS NULL THEN 1 ELSE 0 END,
+              category COLLATE NOCASE,
+              title COLLATE NOCASE
+            """,
+            (project_id,),
+        ).fetchall()
+    else:
+        rows = conn.execute(
+            """
+            SELECT * FROM prompt_blocks
+            WHERE project_id IS NULL
+            ORDER BY category COLLATE NOCASE, title COLLATE NOCASE
+            """
+        ).fetchall()
+    conn.close()
+    return [_block_row_to_dict(r) for r in rows]
+
+
+def delete_prompt_block(block_id: str, *, allow_seed: bool = False) -> bool:
+    block = get_prompt_block(block_id)
+    if not block:
+        return False
+    if block.get("is_seed") and not allow_seed:
+        return False
+    conn = get_conn()
+    cur = conn.execute("DELETE FROM prompt_blocks WHERE id = ?", (block_id,))
+    conn.commit()
+    conn.close()
+    return cur.rowcount > 0
+
+
+def seed_prompt_library() -> list[dict[str, Any]]:
+    """Garante a biblioteca inicial global (idempotente por título)."""
+    existing = {b["title"].lower() for b in list_prompt_blocks(None)}
+    created: list[dict[str, Any]] = []
+    for spec in seed_specs():
+        title = spec["title"]
+        if title.lower() in existing:
+            continue
+        created.append(
+            create_prompt_block(
+                title=title,
+                body=spec["body"],
+                category=spec["category"],
+                target=spec["target"],
+                project_id=None,
+                is_seed=True,
             )
         )
     return created

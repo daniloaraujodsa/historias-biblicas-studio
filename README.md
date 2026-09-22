@@ -73,10 +73,18 @@ Na aba **Formato**:
 - **Luz, câmera e atmosfera** — presets opcionais compostos no mesmo prompt (luz dourada, Rembrandt, close, deserto, templo, etc.).
 - **Áudio do vídeo**: só narração, só trilha, narração e trilha, ou sem áudio. Sem narração, a duração de cada cena é estimada pelo texto.
 - **Série e episódio** (opcionais). Aparecem na lista da home e no título/descrição padrão do YouTube.
+- **Identidade visual** — nome da marca (padrão: Prosperidade e Fé), tom de voz, paleta, estilo de legenda, notas de consistência e nota de logo. Entram no prompt de imagem e no pacote do YouTube.
+- **Notas extras de imagem** — texto livre (e blocos da biblioteca) acrescentado a cada geração.
+
+Na seção **Biblioteca de prompts**:
+
+- Blocos reutilizáveis por categoria (estilo de cena, personagem, ambiente, ação, voz narrativa).
+- Aplicar acrescenta o texto às notas de imagem, ao roteiro ou às notas da marca.
+- Há exemplos iniciais do estúdio; você pode salvar blocos do projeto ou da biblioteca do app.
 
 No **Roteiro**, quatro modelos de arco (queda e graça, confronto e fé, chamado e libertação, julgamento e aliança) preenchem um esboço em português para editar.
 
-Em **Publicar**, o botão **Preencher título e descrição padrão** monta os metadados sem precisar renderizar de novo.
+Em **Publicar**, o botão **Preencher título e descrição padrão** monta os metadados (série, episódio e marca) sem precisar renderizar de novo.
 
 ## O que o pipeline gera
 

@@ -67,6 +67,8 @@ def build_image_prompt(
     light: str = "",
     camera: str = "",
     atmosphere: str = "",
+    prompt_extra: str = "",
+    brand_fragment: str = "",
 ) -> str:
     """Monta prompt em inglês a partir do roteiro/título + bible dos personagens.
 
@@ -110,6 +112,10 @@ def build_image_prompt(
             atmosphere=atmosphere,
         )
     )
+    if (brand_fragment or "").strip():
+        parts.append(brand_fragment.strip())
+    if (prompt_extra or "").strip():
+        parts.append(prompt_extra.strip())
     prompt = "\n".join(parts)
     if compact:
         prompt = " ".join(prompt.split())
@@ -136,6 +142,8 @@ def generate_scene_image(
     light: str = "",
     camera: str = "",
     atmosphere: str = "",
+    prompt_extra: str = "",
+    brand_fragment: str = "",
 ) -> tuple[Path, str]:
     """Gera imagem no formato do projeto (16:9 ou 9:16).
 
@@ -174,6 +182,8 @@ def generate_scene_image(
         light=light,
         camera=camera,
         atmosphere=atmosphere,
+        prompt_extra=prompt_extra,
+        brand_fragment=brand_fragment,
     )
     prompt_full = build_image_prompt(
         scene_title,

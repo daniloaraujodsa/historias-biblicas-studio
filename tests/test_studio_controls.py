@@ -189,17 +189,115 @@ class StudioControlsTest(unittest.TestCase):
             "Noé construiu a arca com a família.\n\nAs águas cobriram a terra.",
             series_name="Gênesis narrado",
             episode_number=4,
+            brand_name="Prosperidade e Fé",
         )
         self.assertIn("Gênesis narrado", meta["youtube_title"])
         self.assertIn("Ep. 4", meta["youtube_title"])
+        self.assertIn("Prosperidade e Fé", meta["youtube_title"])
         self.assertIn("Série: Gênesis narrado", meta["youtube_description"])
         self.assertIn("Episódio 4", meta["youtube_description"])
+        self.assertIn("Canal: Prosperidade e Fé", meta["youtube_description"])
         self.assertIn("Gênesis narrado", meta["youtube_tags"])
         self.assertLessEqual(len(meta["youtube_title"]), 95)
 
-        plain = generate_metadata("Davi e Golias", "fé", "Um jovem desce ao vale.")
-        self.assertIn("História Bíblica", plain["youtube_title"])
+        plain = generate_metadata(
+            "Davi e Golias",
+            "fé",
+            "Um jovem desce ao vale.",
+            brand_name="Prosperidade e Fé",
+        )
+        self.assertIn("Prosperidade e Fé", plain["youtube_title"])
         self.assertNotIn("Série:", plain["youtube_description"])
+
+    def test_prompt_library_save_apply_delete(self) -> None:
+        from app.services.prompt_library import apply_block_to_project
+
+        seeds = self.db.list_prompt_blocks(None)
+        self.assertGreaterEqual(len(seeds), 8)
+        titles = {b["title"] for b in seeds}
+        self.assertIn("Luz de templo", titles)
+        self.assertIn("Narração acolhedora", titles)
+
+        project = self.db.create_project("Elias", "profeta")
+        block = self.db.create_prompt_block(
+            title="Fogo no monte",
+            body="Chama viva no altar de pedra, fumaça e céu escuro.",
+            category="cena",
+            target="prompt_extra",
+            project_id=project["id"],
+        )
+        listed = self.db.list_prompt_blocks(project["id"])
+        self.assertTrue(any(b["id"] == block["id"] for b in listed))
+
+        patch = apply_block_to_project(project, block)
+        self.assertIn("prompt_extra", patch)
+        self.db.update_project(project["id"], **patch)
+        loaded = self.db.get_project(project["id"])
+        assert loaded is not None
+        self.assertIn("Chama viva no altar", loaded["prompt_extra"])
+
+        script_block = next(b for b in seeds if b["target"] == "script")
+        patch2 = apply_block_to_project(loaded, script_block)
+        self.db.update_project(project["id"], **patch2, status="script_ready")
+        again = self.db.get_project(project["id"])
+        assert again is not None
+        self.assertIn(script_block["body"][:40], again["script"])
+
+        self.assertTrue(self.db.delete_prompt_block(block["id"]))
+        self.assertFalse(self.db.delete_prompt_block(seeds[0]["id"]))  # seed protegida
+        self.assertIsNone(self.db.get_prompt_block(block["id"]))
+
+    def test_brand_fields_in_image_prompt_and_metadata(self) -> None:
+        from app.services.brand import compose_brand_prompt_fragment
+        from app.services.images import build_image_prompt
+        from app.services.publish import generate_metadata
+        from app.services.visual import project_visual_kwargs
+
+        project = self.db.create_project("Rute", "redenção")
+        self.assertEqual(project["brand_name"], "Prosperidade e Fé")
+        self.assertIn("Reverente", project["brand_voice"])
+
+        updated = self.db.update_project(
+            project["id"],
+            brand_name="Prosperidade e Fé",
+            brand_palette="dourado e azul noite",
+            brand_visual_notes="rostos consistentes, sem neon",
+            prompt_extra="névoa no vale ao amanhecer",
+            series_name="Mulheres da Bíblia",
+            episode_number=2,
+        )
+        assert updated is not None
+        fragment = compose_brand_prompt_fragment(updated)
+        self.assertIn("Prosperidade e Fé", fragment)
+        self.assertIn("dourado e azul noite", fragment)
+        self.assertIn("rostos consistentes", fragment)
+
+        prompt = build_image_prompt(
+            "O campo",
+            "Rute colhe nas espigas.",
+            0,
+            **project_visual_kwargs(updated),
+        )
+        self.assertIn("Prosperidade e Fé", prompt)
+        self.assertIn("dourado e azul noite", prompt)
+        self.assertIn("névoa no vale ao amanhecer", prompt)
+
+        meta = generate_metadata(
+            updated["title"],
+            updated["theme"],
+            "Rute colhe nas espigas.",
+            series_name=updated["series_name"],
+            episode_number=updated["episode_number"],
+            brand_name=updated["brand_name"],
+            brand_voice=updated["brand_voice"],
+            brand_caption_style=updated["brand_caption_style"],
+        )
+        self.assertIn("Prosperidade e Fé", meta["youtube_title"])
+        self.assertIn("Mulheres da Bíblia", meta["youtube_title"])
+        self.assertIn("Canal: Prosperidade e Fé", meta["youtube_description"])
+        self.assertIn("Tom:", meta["youtube_description"])
+        self.assertIn("Legendas:", meta["youtube_description"])
+        self.assertIn("Prosperidade e Fé", meta["youtube_tags"])
 
     def test_audio_mode_and_duration_helpers(self) -> None:
         from app.services.audio_mode import resolve_mode, uses_music, uses_narration

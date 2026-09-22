@@ -227,9 +227,31 @@ def compose_visual_block(
 
 def project_visual_kwargs(project: dict[str, Any] | None) -> dict[str, str]:
     project = project or {}
+    from app.services.brand import compose_brand_prompt_fragment
+
     return {
         "visual_style": normalize_style(project.get("visual_style")),
         "light": normalize_preset(project.get("light_preset"), "light"),
         "camera": normalize_preset(project.get("camera_preset"), "camera"),
         "atmosphere": normalize_preset(project.get("atmosphere_preset"), "atmosphere"),
+        "prompt_extra": (project.get("prompt_extra") or "").strip(),
+        "brand_fragment": compose_brand_prompt_fragment(project),
     }
+
+
+def compose_full_visual_preview(project: dict[str, Any] | None) -> str:
+    """Pré-visualização do bloco visual + marca + notas de imagem."""
+    kwargs = project_visual_kwargs(project)
+    parts = [
+        compose_visual_block(
+            kwargs["visual_style"],
+            light=kwargs["light"],
+            camera=kwargs["camera"],
+            atmosphere=kwargs["atmosphere"],
+        )
+    ]
+    if kwargs.get("brand_fragment"):
+        parts.append(kwargs["brand_fragment"])
+    if kwargs.get("prompt_extra"):
+        parts.append(kwargs["prompt_extra"])
+    return "\n".join(parts)
