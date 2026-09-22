@@ -2,13 +2,25 @@
 {% block title %}Projetos — Histórias Bíblicas Studio{% endblock %}
 {% block content %}
 <section class="hero">
-  <h1>Produza histórias bíblicas para YouTube</h1>
+  <p class="kicker">Estúdio de produção</p>
+  <h1>Histórias bíblicas prontas para o YouTube</h1>
   <p class="lede">
-    Roteiro → narração TTS → cenas → MP4 com Ken Burns.
-    <strong>Download do vídeo garantido.</strong>
+    Roteiro em português, narração por cena, imagens de IA, legendas, trilha e MP4
+    em 16:9 ou Shorts 9:16 — com thumbnail e pacote de publicação.
   </p>
   <form class="demo-form" method="post" action="/api/projects/demo-davi-golias">
-    <button type="submit" class="btn btn-accent">▶ Demo Davi e Golias</button>
+    <fieldset class="aspect-pills">
+      <legend class="sr-only">Formato da demo</legend>
+      <label class="pill">
+        <input type="radio" name="aspect" value="16:9" checked />
+        YouTube 16:9
+      </label>
+      <label class="pill">
+        <input type="radio" name="aspect" value="9:16" />
+        Shorts 9:16
+      </label>
+    </fieldset>
+    <button type="submit" class="btn btn-accent">Abrir demo Davi e Golias</button>
   </form>
 </section>
 
@@ -24,6 +36,17 @@
         Tema
         <input name="theme" value="{{ default_theme }}" />
       </label>
+      <fieldset class="aspect-pills">
+        <legend>Formato</legend>
+        <label class="pill">
+          <input type="radio" name="aspect" value="16:9" checked />
+          YouTube 16:9
+        </label>
+        <label class="pill">
+          <input type="radio" name="aspect" value="9:16" />
+          Shorts 9:16
+        </label>
+      </fieldset>
       <button type="submit" class="btn btn-primary">Criar projeto</button>
     </form>
   </div>
@@ -35,14 +58,17 @@
       {% for p in projects %}
       <li>
         <a href="/projects/{{ p.id }}">
-          <strong>{{ p.title }}</strong>
-          <span class="meta">{{ p.theme }} · {{ p.status }}</span>
+          <span class="project-list-top">
+            <strong>{{ p.title }}</strong>
+            <span class="badge">{{ p.aspect or '16:9' }}</span>
+          </span>
+          <span class="meta">{{ p.theme }} · {{ status_labels.get(p.status, p.status) }}</span>
         </a>
       </li>
       {% endfor %}
     </ul>
     {% else %}
-    <p class="muted">Nenhum projeto ainda. Crie um ou rode a demo.</p>
+    <p class="muted">Nenhum projeto ainda. Crie um ou abra a demo.</p>
     {% endif %}
   </div>
 </section>

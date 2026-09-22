@@ -1,21 +1,87 @@
 {% extends "base.html" %}
 {% block title %}{{ project.title }} — Histórias Bíblicas Studio{% endblock %}
+{% block body_attrs %} data-aspect="{{ project.aspect or '16:9' }}" data-project-id="{{ project.id }}"{% endblock %}
+{% block dock %}
+<div
+  id="job-dock"
+  class="job-dock{% if job and job.status in ('queued', 'running') %} is-visible is-busy{% elif job and job.status == 'error' %} is-visible is-error{% endif %}"
+  data-project-id="{{ project.id }}"
+  data-job-id="{{ job.id if job else '' }}"
+  data-job-status="{{ job.status if job else 'idle' }}"
+  hidden
+>
+  <div class="job-dock-inner">
+    <div class="job-copy">
+      <strong id="job-step">{{ job.step if job else 'Pronto' }}</strong>
+      <span id="job-pct">{{ job.progress if job else 0 }}%</span>
+    </div>
+    <div class="job-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ job.progress if job else 0 }}">
+      <span id="job-bar-fill" style="width: {{ job.progress if job else 0 }}%"></span>
+    </div>
+    <pre id="job-error" class="job-error"{% if not job or job.status != 'error' %} hidden{% endif %}>{{ job.error if job else '' }}</pre>
+  </div>
+</div>
+{% endblock %}
 {% block content %}
 <div class="project-header">
   <div>
-    <a class="back" href="/">← Projetos</a>
+    <a class="back" href="/">Todos os projetos</a>
     <h1>{{ project.title }}</h1>
-    <p class="meta">Tema: {{ project.theme }} · Status: <span class="badge">{{ project.status }}</span></p>
+    <p class="meta">
+      {{ project.theme }}
+      · <span class="badge">{{ status_label }}</span>
+      · <span class="badge">{{ project.aspect or '16:9' }}</span>
+    </p>
   </div>
   <form method="post" action="/api/projects/{{ project.id }}/delete" onsubmit="return confirm('Excluir este projeto?');">
     <button type="submit" class="btn btn-danger btn-sm">Excluir</button>
   </form>
 </div>
 
-<section class="card">
-  <h2>1. Roteiro (pt-BR)</h2>
+<nav class="jump">
+  <a href="#formato">Formato</a>
+  <a href="#roteiro">Roteiro</a>
+  <a href="#personagens">Elenco</a>
+  <a href="#producao">Produção</a>
+  <a href="#cenas">Cenas</a>
+  <a href="#publicar">Publicar</a>
+</nav>
+
+<section class="card" id="formato">
+  <h2>Formato e opções</h2>
+  <form method="post" action="/api/projects/{{ project.id }}/settings" class="stack">
+    <fieldset class="aspect-pills">
+      <legend>Proporção</legend>
+      <label class="pill">
+        <input type="radio" name="aspect" value="16:9" {% if project.aspect != '9:16' %}checked{% endif %} />
+        YouTube 16:9
+      </label>
+      <label class="pill">
+        <input type="radio" name="aspect" value="9:16" {% if project.aspect == '9:16' %}checked{% endif %} />
+        Shorts 9:16
+      </label>
+    </fieldset>
+    <div class="toggles">
+      <label class="check">
+        <input type="checkbox" name="burn_captions" value="on" {% if project.burn_captions %}checked{% endif %} />
+        Gravar legendas no vídeo
+      </label>
+      <label class="check">
+        <input type="checkbox" name="add_music" value="on" {% if project.add_music %}checked{% endif %} />
+        Trilha musical sob a narração
+      </label>
+    </div>
+    <button type="submit" class="btn btn-primary">Salvar opções</button>
+  </form>
+</section>
+
+<section class="card" id="roteiro">
+  <h2>Roteiro</h2>
   <form method="post" action="/api/projects/{{ project.id }}/script" class="stack">
-    <textarea name="script" rows="12" placeholder="Cole ou escreva o roteiro pronto para narrar…">{{ project.script or '' }}</textarea>
+    <label>
+      Texto para narrar (pt-BR)
+      <textarea name="script" rows="12" placeholder="Cole ou escreva o roteiro pronto para narrar…">{{ project.script or '' }}</textarea>
+    </label>
     <div class="row">
       <button type="submit" class="btn btn-primary">Salvar roteiro</button>
     </div>
@@ -25,8 +91,8 @@
 <section class="card" id="personagens">
   <h2>Personagens</h2>
   <p class="muted">
-    Bíblia visual + imagem de referência para manter Davi, Golias etc. consistentes entre cenas.
-    Na geração de imagens, o prompt inclui a bible de quem aparece na cena (por nome).
+    Bíblia visual e foto de referência mantêm o mesmo rosto entre as cenas.
+    O elenco de cada cena entra no prompt de imagem.
   </p>
 
   {% if characters %}
@@ -36,11 +102,11 @@
       <div class="character-ref">
         {% if ch.reference_image_path %}
         <img
-          src="/media/projects/{{ project.id }}/characters/{{ ch.reference_image_path.split('/')[-1] }}?v={{ ch.updated_at }}"
-          alt="Ref {{ ch.name }}"
+          src="/media/projects/{{ project.id }}/characters/{{ ch.reference_image_path|basename }}?v={{ ch.updated_at }}"
+          alt="Referência de {{ ch.name }}"
         />
         {% else %}
-        <div class="placeholder">Sem ref</div>
+        <div class="placeholder square">Sem referência</div>
         {% endif %}
       </div>
       <form
@@ -55,10 +121,10 @@
         <label>Papel
           <input type="text" name="role" value="{{ ch.role or '' }}" placeholder="ex.: jovem pastor" />
         </label>
-        <label>Bíblia visual (pt-BR)
+        <label>Bíblia visual
           <textarea name="visual_bible" rows="5" placeholder="Idade, rosto, cabelo, roupas, porte, traços…">{{ ch.visual_bible or '' }}</textarea>
         </label>
-        <label>Imagem de referência (opcional)
+        <label>Imagem de referência
           <input type="file" name="reference_image" accept="image/*" />
         </label>
         <div class="row character-actions">
@@ -78,7 +144,7 @@
   {% else %}
   <p class="muted">Nenhum personagem ainda.</p>
   <form method="post" action="/api/projects/{{ project.id }}/characters/seed-demo" class="seed-form">
-    <button type="submit" class="btn btn-sm">➕ Semear Davi / Golias / Saul</button>
+    <button type="submit" class="btn btn-sm">Semear Davi, Golias e Saul</button>
   </form>
   {% endif %}
 
@@ -96,8 +162,8 @@
       <label>Papel
         <input type="text" name="role" placeholder="ex.: jovem pastor" />
       </label>
-      <label>Bíblia visual (pt-BR)
-        <textarea name="visual_bible" rows="4" placeholder="Idade, rosto, cabelo, roupas, porte, traços distintivos…"></textarea>
+      <label>Bíblia visual
+        <textarea name="visual_bible" rows="4" placeholder="Idade, rosto, cabelo, roupas, porte…"></textarea>
       </label>
       <label>Imagem de referência
         <input type="file" name="reference_image" accept="image/*" />
@@ -107,99 +173,174 @@
   </details>
 </section>
 
-<section class="card">
-  <h2>2. Produção</h2>
-  <p class="muted">Execute passo a passo ou use o pipeline completo.</p>
-  <p class="ai-note">🖼 Imagens geradas por IA (provedor: <strong>{{ image_provider_label }}</strong>). Em falha, usa placeholder local. Personagens do projeto entram no prompt (bible) e, com Grok + ref, no modo edit.</p>
+<section class="card" id="producao">
+  <h2>Produção</h2>
+  <p class="muted">Rode passo a passo ou o pipeline completo. O progresso aparece no topo.</p>
+  <p class="ai-note">Imagens: <strong>{{ image_provider_label }}</strong>. Se a rede falhar, o estúdio usa um placeholder local.</p>
   <div class="actions">
-    <form method="post" action="/api/projects/{{ project.id }}/segment">
+    <form method="post" action="/api/projects/{{ project.id }}/segment" data-job>
       <button class="btn" type="submit">Segmentar cenas</button>
     </form>
-    <form method="post" action="/api/projects/{{ project.id }}/tts" class="inline-form">
-      <select name="voice">
+    <form method="post" action="/api/projects/{{ project.id }}/tts" class="inline-form" data-job>
+      <select name="voice" aria-label="Voz da narração">
         {% for v in voices %}
         <option value="{{ v }}" {% if v == default_voice %}selected{% endif %}>{{ v }}</option>
         {% endfor %}
       </select>
-      <button class="btn" type="submit">Gerar narração (TTS)</button>
+      <button class="btn" type="submit">Gerar narração</button>
     </form>
-    <form method="post" action="/api/projects/{{ project.id }}/images" data-busy>
-      <button class="btn" type="submit">Gerar imagens (IA)</button>
+    <form method="post" action="/api/projects/{{ project.id }}/images" data-job>
+      <button class="btn" type="submit">Gerar imagens</button>
     </form>
-    <form method="post" action="/api/projects/{{ project.id }}/render">
+    <form method="post" action="/api/projects/{{ project.id }}/render" data-job>
       <button class="btn" type="submit">Montar MP4</button>
     </form>
   </div>
-  <form method="post" action="/api/projects/{{ project.id }}/pipeline" class="pipeline-form" data-busy>
-    <select name="voice">
+  <form method="post" action="/api/projects/{{ project.id }}/pipeline" class="pipeline-form" data-job data-save-scenes>
+    <select name="voice" aria-label="Voz do pipeline">
       {% for v in voices %}
       <option value="{{ v }}" {% if v == default_voice %}selected{% endif %}>{{ v }}</option>
       {% endfor %}
     </select>
-    <button class="btn btn-accent" type="submit">⚡ Pipeline completo (TTS + imagens IA + MP4)</button>
+    <button class="btn btn-accent" type="submit">Pipeline completo</button>
   </form>
-  <p class="hint">O pipeline pode levar vários minutos (TTS + fila de imagens IA + FFmpeg).</p>
+  <p class="hint">Narração por cena, imagens, legendas, música e pacote YouTube. Pode levar alguns minutos.</p>
 </section>
 
 {% if project.audio_path %}
 <section class="card">
   <h2>Narração</h2>
-  <audio controls src="/media/projects/{{ project.id }}/audio"></audio>
+  <audio controls src="/media/projects/{{ project.id }}/audio?v={{ project.updated_at }}"></audio>
 </section>
 {% endif %}
 
-{% if project.scenes %}
-<section class="card">
-  <h2>3. Cenas ({{ project.scenes|length }})</h2>
-  <p class="muted">As imagens abaixo são geradas por inteligência artificial a partir do texto de cada cena.</p>
-  <div class="scenes">
+<section class="card" id="cenas">
+  <div class="section-head">
+    <h2>Cenas{% if project.scenes %} ({{ project.scenes|length }}){% endif %}</h2>
+    <div class="row">
+      <button type="button" class="btn btn-primary btn-sm" id="save-scenes">Salvar cenas</button>
+      <form method="post" action="/api/projects/{{ project.id }}/scenes/add">
+        <button class="btn btn-sm" type="submit">Nova cena</button>
+      </form>
+    </div>
+  </div>
+  <p class="muted">Edite título, texto e elenco. Reordene, envie uma imagem ou regenere com IA. A duração vem da narração de cada cena.</p>
+  <p id="scenes-save-status" class="hint" hidden></p>
+
+  {% if project.scenes %}
+  <div class="scenes" id="scene-editor">
     {% for s in project.scenes %}
-    <article class="scene" id="cena-{{ s.index }}">
-      <div class="scene-thumb">
+    <article class="scene" id="cena-{{ s.index }}" data-index="{{ s.index }}">
+      <div class="scene-thumb{% if project.aspect == '9:16' %} is-shorts{% endif %}">
         {% if s.image_path %}
-        <img src="/media/projects/{{ project.id }}/images/cena-{{ '%02d'|format(s.index) }}.jpg?v={{ project.updated_at }}" alt="{{ s.title }}" />
+        <img src="/media/projects/{{ project.id }}/images/{{ s.image_path|basename }}?v={{ project.updated_at }}" alt="{{ s.title }}" />
         {% else %}
         <div class="placeholder">Sem imagem</div>
         {% endif %}
       </div>
-      <div>
-        <h3>{{ s.title }}</h3>
-        <p class="scene-text">{{ s.text }}</p>
+      <div class="scene-body">
+        <div class="scene-toolbar">
+          <span class="badge">Cena {{ s.index + 1 }}</span>
+          <form method="post" action="/api/projects/{{ project.id }}/scenes/{{ s.index }}/move" class="inline-form" data-save-scenes>
+            <input type="hidden" name="direction" value="-1" />
+            <button class="btn btn-sm" type="submit" {% if loop.first %}disabled{% endif %}>Subir</button>
+          </form>
+          <form method="post" action="/api/projects/{{ project.id }}/scenes/{{ s.index }}/move" class="inline-form" data-save-scenes>
+            <input type="hidden" name="direction" value="1" />
+            <button class="btn btn-sm" type="submit" {% if loop.last %}disabled{% endif %}>Descer</button>
+          </form>
+          <form method="post" action="/api/projects/{{ project.id }}/scenes/{{ s.index }}/delete" onsubmit="return confirm('Excluir esta cena?');">
+            <button class="btn btn-danger btn-sm" type="submit">Excluir</button>
+          </form>
+        </div>
+        <label>Título
+          <input type="text" name="title" value="{{ s.title or '' }}" />
+        </label>
+        <label>Texto narrado
+          <textarea name="text" rows="4">{{ s.text or '' }}</textarea>
+        </label>
+        <div class="scene-grid">
+          <label>Elenco (vírgula)
+            <input type="text" name="cast" value="{{ s.cast or '' }}" placeholder="Davi, Saul" />
+          </label>
+          <label>Duração (s)
+            <input type="number" name="duration_sec" min="1" step="0.1" value="{{ s.duration_sec or '' }}" placeholder="TTS" />
+          </label>
+        </div>
         <div class="scene-meta-row">
-          {% if s.duration_sec %}
-          <span class="meta">{{ '%.1f'|format(s.duration_sec) }}s</span>
-          {% endif %}
           {% if s.image_source %}
           <span class="badge badge-ai">
-            {% if s.image_source == 'grok_edit' %}IA · Grok Imagine (ref)
-            {% elif s.image_source == 'grok' %}IA · Grok Imagine
+            {% if s.image_source == 'grok_edit' %}IA · Grok (ref)
+            {% elif s.image_source == 'grok' %}IA · Grok
             {% elif s.image_source == 'pollinations' %}IA · Pollinations
             {% elif s.image_source == 'openai' %}IA · OpenAI
+            {% elif s.image_source == 'upload' %}Upload
             {% else %}Placeholder
             {% endif %}
           </span>
           {% endif %}
         </div>
-        {% if s.image_path %}
-        <form method="post" action="/api/projects/{{ project.id }}/images/{{ s.index }}/regenerate" class="regen-form" data-busy>
-          <button class="btn btn-sm" type="submit">↻ Regenerar imagem</button>
-        </form>
-        {% endif %}
+        <div class="row scene-media-actions">
+          <form method="post" action="/api/projects/{{ project.id }}/images/{{ s.index }}/regenerate" data-job data-save-scenes>
+            <button class="btn btn-sm" type="submit">Regenerar imagem</button>
+          </form>
+          <form method="post" action="/api/projects/{{ project.id }}/scenes/{{ s.index }}/upload" enctype="multipart/form-data" class="upload-form">
+            <label class="btn btn-sm file-btn">
+              Enviar imagem
+              <input type="file" name="image" accept="image/*" onchange="this.form.submit()" />
+            </label>
+          </form>
+        </div>
       </div>
     </article>
     {% endfor %}
   </div>
-</section>
-{% endif %}
-
-<section class="card export-card">
-  <h2>4. Exportar MP4</h2>
-  {% if project.video_path %}
-  <p class="ok">Vídeo pronto!</p>
-  <a class="btn btn-accent btn-lg" href="/api/projects/{{ project.id }}/download">⬇ Baixar MP4</a>
-  <p class="muted path">Arquivo: {{ project.video_path }}</p>
   {% else %}
-  <p class="muted">Ainda sem MP4. Rode o pipeline ou “Montar MP4”.</p>
+  <p class="muted">Ainda sem cenas. Salve o roteiro e clique em Segmentar, ou adicione uma cena vazia.</p>
   {% endif %}
+</section>
+
+<section class="card export-card" id="publicar">
+  <h2>Preview e publicação</h2>
+  {% if project.video_path %}
+  <div class="preview-grid">
+    <div class="preview-frame{% if project.aspect == '9:16' %} is-shorts{% endif %}">
+      <video controls playsinline src="/media/projects/{{ project.id }}/video?v={{ project.updated_at }}"></video>
+    </div>
+    {% if project.thumbnail_path %}
+    <figure class="thumb-frame">
+      <img src="/media/projects/{{ project.id }}/thumb?v={{ project.updated_at }}" alt="Thumbnail do YouTube" />
+      <figcaption>Thumbnail 1280×720</figcaption>
+    </figure>
+    {% endif %}
+  </div>
+  <div class="download-row">
+    <a class="btn btn-accent" href="/api/projects/{{ project.id }}/download">Baixar MP4</a>
+    {% if project.captions_path %}
+    <a class="btn" href="/api/projects/{{ project.id }}/download-srt">Legendas SRT</a>
+    {% endif %}
+    {% if project.thumbnail_path %}
+    <a class="btn" href="/api/projects/{{ project.id }}/download-thumb">Thumbnail</a>
+    {% endif %}
+    {% if project.pack_path %}
+    <a class="btn" href="/api/projects/{{ project.id }}/download-pack">Pacote YouTube (ZIP)</a>
+    {% endif %}
+  </div>
+  {% else %}
+  <p class="muted">Ainda sem MP4. Rode o pipeline ou Monte MP4 para ver o preview aqui.</p>
+  {% endif %}
+
+  <form method="post" action="/api/projects/{{ project.id }}/youtube" class="stack youtube-form">
+    <label>Título do YouTube
+      <input name="youtube_title" maxlength="100" value="{{ project.youtube_title or '' }}" placeholder="Gerado na montagem" />
+    </label>
+    <label>Descrição
+      <textarea name="youtube_description" rows="8">{{ project.youtube_description or '' }}</textarea>
+    </label>
+    <label>Tags (vírgula)
+      <input name="youtube_tags" value="{{ project.youtube_tags or '' }}" />
+    </label>
+    <button type="submit" class="btn btn-primary">Salvar metadados</button>
+  </form>
 </section>
 {% endblock %}

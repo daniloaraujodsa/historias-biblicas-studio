@@ -1,10 +1,42 @@
+# Python
 .venv/
 __pycache__/
 *.pyc
+*.pyo
+.pytest_cache/
+.mypy_cache/
+
+# Secrets & local env
 .env
+.env.local
+*.pem
+
+# Runtime / generated pipeline data
 data/projects/
 data/exports/
+data/music/
 data/studio.db
+data/*.db
+
+# Media outputs
 *.mp4
 *.mp3
+*.wav
+*.webm
+
+# Tooling / OS
 .DS_Store
+.idea/
+.vscode/
+*.swp
+node_modules/
+.npm/
+dist/
+build/
+.sandbox/
+artifacts/
+attachments/
+
+# Grok / export leftovers
+.node_modules.lock
+.project_id
