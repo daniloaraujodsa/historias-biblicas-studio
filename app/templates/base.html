@@ -6,21 +6,26 @@
   <title>{% block title %}Histórias Bíblicas Studio{% endblock %}</title>
   <link rel="stylesheet" href="/static/style.css" />
 </head>
-<body>
+<body{% block body_attrs %}{% endblock %}>
   <header class="topbar">
     <a class="brand" href="/">
-      <span class="brand-mark">✝</span>
+      <span class="brand-mark" aria-hidden="true">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+          <path d="M12 3v18M7 8h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+        </svg>
+      </span>
       <span>Histórias Bíblicas Studio</span>
     </a>
     <nav>
       <a href="/">Projetos</a>
     </nav>
   </header>
+  {% block dock %}{% endblock %}
   <main class="container">
     {% block content %}{% endblock %}
   </main>
   <footer class="footer">
-    <p>MVP local · narração edge-tts · imagens IA (Pollinations/OpenAI) · export MP4 via FFmpeg</p>
+    <p>Narração TTS · imagens IA · legendas · música · export MP4 e pacote YouTube</p>
   </footer>
   <script src="/static/app.js"></script>
 </body>

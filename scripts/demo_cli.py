@@ -72,8 +72,9 @@ def main() -> int:
         status="video_ready",
     )
     print(f"\n✓ MP4 pronto: {out}")
-    print(f"  Abrir projeto: http://127.0.0.1:8765/projects/{pid}")
-    print(f"  Download:     http://127.0.0.1:8765/api/projects/{pid}/download")
+    print(f"  Abrir projeto: http://127.0.0.1:8080/projects/{pid}")
+    print(f"  Download:     http://127.0.0.1:8080/api/projects/{pid}/download")
+
     return 0
 
 

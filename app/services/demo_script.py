@@ -1,4 +1,4 @@
-"""Roteiro demo: Davi e Golias (curto, pt-BR)."""
+"""Roteiros demo: Davi e Golias (curto e ~2 min), pt-BR."""
 
 DAVI_GOLIAS_TITLE = "Davi e Golias"
 DAVI_GOLIAS_THEME = "histórias bíblicas"
@@ -33,4 +33,58 @@ DAVI_GOLIAS_SCENE_HINTS = [
     "Davi escolhe a funda e as pedras",
     "Davi confronta Golias em nome do Senhor",
     "A pedra atinge Golias; a fé vence",
+]
+
+DAVI_GOLIAS_LONG_TITLE = "Davi e Golias — 2 minutos"
+DAVI_GOLIAS_LONG_SCRIPT = """\
+No vale de Elá, entre as montanhas de Judá, o sol caía sobre dois acampamentos. De um lado, os homens de Israel. Do outro, os filisteus, armados até os dentes.
+
+Durante quarenta dias, manhã e tarde, um gigante chamado Golias saía das fileiras. Media quase três metros. A armadura de bronze brilhava. A lança parecia o mastro de um navio.
+
+Golias gritava: “Escolhei um homem para lutar comigo! Se ele me vencer, seremos vossos servos. Se eu o vencer, sereis nossos servos.”
+
+O silêncio era a única resposta. Até o rei Saul, o mais alto de Israel, temia. O medo se espalhava como fumaça no acampamento.
+
+Naqueles dias, um jovem pastor chamado Davi veio do campo. Seu pai, Jessé, o enviara apenas para levar pão e queijo aos irmãos soldados.
+
+Davi ouviu o desafio. Viu os homens recuarem. E o coração se inflamou. “Quem é esse filisteu para desafiar os exércitos do Deus vivo?”
+
+Os irmãos o repreenderam, achando que falava por orgulho. Davi não recuou. Levaram-no até Saul.
+
+Saul olhou o rapaz e disse: “Tu não podes ir contra esse filisteu. És um jovem, e ele é guerreiro desde a mocidade.”
+
+Davi respondeu: “Teu servo pastoreava as ovelhas. Quando vinha um leão ou um urso, eu o perseguia. O Senhor me livrou das garras do leão e do urso; ele me livrará da mão deste filisteu.”
+
+Saul tentou vestir Davi com sua própria armadura: capacete, couraça e espada. Davi deu alguns passos e parou. “Não posso andar com isto. Não estou acostumado.”
+
+Tirou tudo. Pegou o cajado, escolheu cinco pedras lisas no riacho e colocou-as na bolsa de pastor. Na mão, só a funda.
+
+Golias viu o menino se aproximar e o desprezou. “Sou eu algum cão, para vires a mim com paus? Vem, e darei tua carne às aves do céu.”
+
+Davi não tremeu. “Tu vens contra mim com espada, lança e escudo. Eu vou contra ti em nome do Senhor dos Exércitos, o Deus das fileiras de Israel, a quem desafiaste.”
+
+“Hoje o Senhor te entregará na minha mão. Toda a terra saberá que há Deus em Israel. E esta assembleia saberá que o Senhor não salva com espada nem com lança.”
+
+Davi correu para a linha de combate. Girou a funda. A pedra cortou o ar e cravou-se na testa de Golias. O gigante caiu com o rosto em terra.
+
+Davi tomou a espada do próprio Golias e venceu. Os filisteus fugiram. Israel gritou. A vitória não veio da força, nem do bronze — veio da fé.
+
+Assim um pastor derrotou um gigante. E o nome do Senhor foi exaltado no vale de Elá.
+"""
+
+DAVI_GOLIAS_LONG_HINTS = [
+    "Dois acampamentos no vale de Elá",
+    "Golias desafia Israel quarenta dias",
+    "O grito do gigante e o silêncio",
+    "O medo no acampamento de Saul",
+    "Davi chega com pão para os irmãos",
+    "Davi se indigna com o desafio",
+    "Saul duvida do jovem pastor",
+    "O Senhor livrou Davi do leão e do urso",
+    "Davi recusa a armadura do rei",
+    "Cinco pedras lisas e a funda",
+    "Golias despreza o menino",
+    "Davi enfrenta Golias em nome do Senhor",
+    "A pedra atinge a testa do gigante",
+    "A vitória da fé no vale de Elá",
 ]

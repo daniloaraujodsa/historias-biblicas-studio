@@ -54,21 +54,29 @@ def match_characters_in_scene(
     characters: list[dict[str, Any]],
     scene_title: str,
     scene_text: str,
+    cast: str = "",
 ) -> list[dict[str, Any]]:
-    """Detecta personagens pelo nome no título/texto da cena (case-insensitive).
+    """Detecta personagens pelo elenco da cena ou pelo nome no texto.
 
-    Preferência: só quem aparece na cena. Se nenhum match, devolve todos
-    (para manter consistência do elenco do projeto).
+    `cast` é uma lista separada por vírgula (ex.: "Davi, Saul").
+    Se ninguém bater, devolve todos (consistência do elenco).
     """
     if not characters:
         return []
+    if cast.strip():
+        wanted = {n.strip().lower() for n in cast.split(",") if n.strip()}
+        matched = [
+            ch
+            for ch in characters
+            if (ch.get("name") or "").strip().lower() in wanted
+        ]
+        if matched:
+            return matched
     hay = f"{scene_title or ''}\n{scene_text or ''}".lower()
     matched = []
     for ch in characters:
         name = (ch.get("name") or "").strip()
-        if not name:
-            continue
-        if name.lower() in hay:
+        if name and name.lower() in hay:
             matched.append(ch)
     return matched if matched else list(characters)
 
