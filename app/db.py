@@ -125,6 +125,23 @@ def init_db() -> None:
     )
     conn.execute(
         """
+        CREATE TABLE IF NOT EXISTS production_plans (
+            id TEXT PRIMARY KEY,
+            project_id TEXT NOT NULL,
+            brief TEXT NOT NULL,
+            status TEXT DEFAULT 'ready',
+            plan_json TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+        )
+        """
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_plans_project ON production_plans(project_id)"
+    )
+    conn.execute(
+        """
         UPDATE projects
         SET audio_mode = CASE WHEN COALESCE(add_music, 1) = 1 THEN 'both' ELSE 'narration' END
         WHERE audio_mode IS NULL OR TRIM(audio_mode) = ''
@@ -274,6 +291,7 @@ def update_project(project_id: str, **fields: Any) -> dict[str, Any] | None:
 
 def delete_project(project_id: str) -> bool:
     conn = get_conn()
+    conn.execute("DELETE FROM production_plans WHERE project_id = ?", (project_id,))
     conn.execute("DELETE FROM characters WHERE project_id = ?", (project_id,))
     conn.execute("DELETE FROM jobs WHERE project_id = ?", (project_id,))
     cur = conn.execute("DELETE FROM projects WHERE id = ?", (project_id,))
@@ -575,6 +593,83 @@ def seed_prompt_library() -> list[dict[str, Any]]:
             )
         )
     return created
+
+
+# ---------- Planos da equipe ----------
+
+
+def _plan_row_to_dict(row: sqlite3.Row) -> dict[str, Any]:
+    data = dict(row)
+    try:
+        data["plan"] = json.loads(data.pop("plan_json") or "{}")
+    except json.JSONDecodeError:
+        data["plan"] = {}
+    status = data.get("status") or "ready"
+    data["status"] = status
+    data["status_label"] = "Aplicado ao projeto" if status == "applied" else "Pronto para revisar"
+    data["brief"] = (data.get("brief") or "").strip()
+    return data
+
+
+def create_production_plan(project_id: str, brief: str, plan: dict[str, Any]) -> dict[str, Any]:
+    plan_id = str(uuid4())
+    now = _now()
+    conn = get_conn()
+    conn.execute(
+        """
+        INSERT INTO production_plans
+          (id, project_id, brief, status, plan_json, created_at, updated_at)
+        VALUES (?, ?, ?, 'ready', ?, ?, ?)
+        """,
+        (
+            plan_id,
+            project_id,
+            (brief or "").strip(),
+            json.dumps(plan, ensure_ascii=False),
+            now,
+            now,
+        ),
+    )
+    conn.commit()
+    conn.close()
+    return get_production_plan(plan_id)  # type: ignore[return-value]
+
+
+def get_production_plan(plan_id: str) -> dict[str, Any] | None:
+    conn = get_conn()
+    row = conn.execute("SELECT * FROM production_plans WHERE id = ?", (plan_id,)).fetchone()
+    conn.close()
+    return _plan_row_to_dict(row) if row else None
+
+
+def list_production_plans(project_id: str) -> list[dict[str, Any]]:
+    conn = get_conn()
+    rows = conn.execute(
+        """
+        SELECT * FROM production_plans
+        WHERE project_id = ?
+        ORDER BY created_at DESC
+        """,
+        (project_id,),
+    ).fetchall()
+    conn.close()
+    return [_plan_row_to_dict(row) for row in rows]
+
+
+def latest_production_plan(project_id: str) -> dict[str, Any] | None:
+    plans = list_production_plans(project_id)
+    return plans[0] if plans else None
+
+
+def mark_production_plan_applied(plan_id: str) -> dict[str, Any] | None:
+    conn = get_conn()
+    conn.execute(
+        "UPDATE production_plans SET status = 'applied', updated_at = ? WHERE id = ?",
+        (_now(), plan_id),
+    )
+    conn.commit()
+    conn.close()
+    return get_production_plan(plan_id)
 
 
 # ---------- Jobs ----------

@@ -49,6 +49,7 @@
   <a href="#formato">Formato</a>
   <a href="#marca">Marca</a>
   <a href="#biblioteca">Biblioteca</a>
+  <a href="#planejamento">Planejar</a>
   <a href="#roteiro">Roteiro</a>
   <a href="#personagens">Elenco</a>
   <a href="#producao">Produção</a>
@@ -244,6 +245,122 @@
   </details>
 </section>
 
+<section class="card" id="planejamento">
+  <h2>Planejamento da equipe</h2>
+  <p class="muted">
+    Escreva um breve — história, passagem ou tema — e a equipe do estúdio devolve um plano em três etapas:
+    roteiro, direção de arte e pacote do YouTube. Nada entra no projeto até você aplicar.
+  </p>
+  <form method="post" action="/api/projects/{{ project.id }}/planejar" class="stack">
+    <label>Breve
+      <textarea name="brief" rows="3" maxlength="800" required placeholder="Ex.: Davi e Golias no vale de Elá, 1 Samuel 17">{{ production_plan.brief if production_plan else '' }}</textarea>
+    </label>
+    <button type="submit" class="btn btn-primary">Planejar com equipe</button>
+  </form>
+
+  {% if production_plan and production_plan.plan.agents %}
+  {% set plano = production_plan.plan %}
+  <div class="plan-status">
+    <span class="badge">{{ production_plan.status_label }}</span>
+    <span class="meta">{{ plano.source_label }}</span>
+  </div>
+  <blockquote class="plan-brief">{{ production_plan.brief }}</blockquote>
+  {% if plano.suggested_title and plano.suggested_title != project.title %}
+  <p class="hint">Título sugerido: {{ plano.suggested_title }}. O título do projeto só muda se você editar.</p>
+  {% endif %}
+  <ol class="plan-steps">
+    {% for step in plano.steps %}
+    <li><strong>{{ step.name }}</strong> — {{ step.label }}</li>
+    {% endfor %}
+  </ol>
+  <div class="plan-board">
+    {% for key in plano.agent_order %}
+    {% set agent = plano.agents[key] %}
+    <article class="plan-card">
+      <h3>{{ agent.name }}</h3>
+      <p class="plan-mandate">{{ agent.mandate }}</p>
+      <p>{{ agent.summary }}</p>
+      {% if agent.id == 'roteirista' %}
+        {% if agent.passage %}<p class="meta">Passagem: {{ agent.passage }}</p>{% endif %}
+        <ol class="plan-scenes">
+          {% for sc in agent.scenes %}
+          <li>
+            <strong>{{ sc.title }}</strong>
+            <span class="badge">{{ sc.beat }}</span>
+            {% if sc.reference %}<span class="badge">{{ sc.reference }}</span>{% endif %}
+            {% if sc.cast %}<span class="meta">Elenco: {{ sc.cast }}</span>{% endif %}
+            <p>{{ sc.narration }}</p>
+          </li>
+          {% endfor %}
+        </ol>
+      {% elif agent.id == 'diretor_arte' %}
+        <p class="meta">Estilo mantido: {{ agent.style_label }} · Luz: {{ agent.light_label }} · Atmosfera: {{ agent.atmosphere_label }}</p>
+        {% if agent.library_blocks %}
+        <p class="plan-blocks">Biblioteca:
+          {% for block in agent.library_blocks %}<span class="badge">{{ block.title }}</span>{% endfor %}
+        </p>
+        {% endif %}
+        <ol class="plan-scenes">
+          {% for note in agent.scene_notes %}
+          <li>
+            <strong>{{ note.title }}</strong>
+            <span class="badge">{{ note.camera_label }}</span>
+            <span class="badge">{{ note.light_label }}</span>
+            <span class="badge">{{ note.atmosphere_label }}</span>
+            <p>{{ note.art_note }}</p>
+          </li>
+          {% endfor %}
+        </ol>
+      {% elif agent.id == 'editor_youtube' %}
+        <p><strong>Gancho.</strong> {{ agent.hook }}</p>
+        <p><strong>Título.</strong> {{ agent.youtube_title }}</p>
+        <pre class="plan-pre">{{ agent.youtube_description }}</pre>
+        <p class="meta">{{ agent.youtube_tags }}</p>
+      {% endif %}
+    </article>
+    {% endfor %}
+  </div>
+
+  <form
+    method="post"
+    action="/api/projects/{{ project.id }}/planejar/{{ production_plan.id }}/aplicar"
+    class="stack plan-apply"
+    {% if project.script or project.scenes or project.youtube_title or project.prompt_extra or project.light_preset or project.atmosphere_preset %}
+    onsubmit="return confirm('Aplicar o plano substitui roteiro, cenas, notas visuais ou YouTube conforme as caixas marcadas. Formato, áudio, marca, série e estilo visual permanecem. Continuar?');"
+    {% endif %}
+  >
+    <fieldset class="plan-checks">
+      <legend>Aplicar ao projeto</legend>
+      <label class="check">
+        <input type="checkbox" name="apply_script" value="on" checked />
+        Roteiro, cenas e notas de arte de cada cena
+      </label>
+      <label class="check">
+        <input type="checkbox" name="apply_visual" value="on" checked />
+        Luz, atmosfera e notas gerais de imagem
+      </label>
+      <label class="check">
+        <input type="checkbox" name="apply_youtube" value="on" checked />
+        Título, descrição e tags do YouTube
+      </label>
+    </fieldset>
+    <button type="submit" class="btn btn-accent">Aplicar ao projeto</button>
+    <p class="hint">
+      Formato, áudio, marca, série e estilo visual não mudam.
+      Imagens já geradas continuam na cena de mesmo número.
+    </p>
+  </form>
+  {% if previous_plans %}
+  <p class="hint plan-history">Planos anteriores neste projeto:</p>
+  <ul class="plan-history">
+    {% for old in previous_plans %}
+    <li>{{ old.brief }} — {{ old.status_label }}</li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+  {% endif %}
+</section>
+
 <section class="card" id="roteiro">
   <h2>Roteiro</h2>
   <p class="muted">Um clique preenche um esboço em português. Depois você edita o texto.</p>
@@ -433,6 +550,7 @@
       <div class="scene-body">
         <div class="scene-toolbar">
           <span class="badge">Cena {{ s.index + 1 }}</span>
+          {% if s.reference %}<span class="badge">{{ s.reference }}</span>{% endif %}
           <form method="post" action="/api/projects/{{ project.id }}/scenes/{{ s.index }}/move" class="inline-form" data-save-scenes>
             <input type="hidden" name="direction" value="-1" />
             <button class="btn btn-sm" type="submit" {% if loop.first %}disabled{% endif %}>Subir</button>
@@ -459,6 +577,12 @@
             <input type="number" name="duration_sec" min="1" step="0.1" value="{{ s.duration_sec or '' }}" placeholder="TTS" />
           </label>
         </div>
+        {% if s.art_note %}
+        <details class="prompt-details">
+          <summary>Nota de arte</summary>
+          <p>{{ s.art_note }}</p>
+        </details>
+        {% endif %}
         {% if s.image_prompt %}
         <details class="prompt-details">
           <summary>Prompt da imagem</summary>

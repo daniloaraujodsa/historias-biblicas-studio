@@ -534,6 +534,106 @@ audio, video { width: 100%; margin-top: 0.5rem; border-radius: var(--radius-sm);
   gap: 0.35rem;
 }
 
+.plan-home { margin-bottom: var(--space-5); }
+.plan-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  margin-top: var(--space-4);
+}
+.plan-brief {
+  margin: 0.75rem 0;
+  padding: 0.65rem 0.9rem;
+  border-left: 3px solid var(--primary);
+  color: var(--fg);
+  background: var(--bg-elevated);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+.plan-steps {
+  margin: 0 0 var(--space-4);
+  padding-left: 1.2rem;
+  color: var(--muted);
+}
+.plan-steps li { margin: 0.2rem 0; }
+.plan-steps strong { color: var(--fg); }
+.plan-board {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-bottom: var(--space-4);
+}
+@media (max-width: 900px) {
+  .plan-board { grid-template-columns: 1fr; }
+}
+.plan-card {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 0.85rem;
+  min-width: 0;
+}
+.plan-card h3 {
+  margin: 0 0 0.25rem;
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+}
+.plan-mandate {
+  margin: 0 0 0.5rem;
+  color: var(--muted);
+  font-size: var(--text-sm);
+}
+.plan-card > p { margin: 0 0 0.65rem; }
+.plan-scenes {
+  margin: 0.4rem 0 0;
+  padding-left: 1.1rem;
+}
+.plan-scenes li { margin: 0 0 0.75rem; }
+.plan-scenes p {
+  margin: 0.3rem 0 0;
+  color: var(--muted);
+  font-size: var(--text-sm);
+}
+.plan-blocks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  align-items: center;
+}
+.plan-pre {
+  max-height: 12rem;
+  overflow: auto;
+  margin: 0.4rem 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: var(--muted);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.65rem 0.75rem;
+}
+.plan-apply { margin-top: 0.5rem; }
+.plan-checks {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 0.75rem 0.9rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+.plan-checks legend {
+  padding: 0 0.35rem;
+  font-family: var(--font-display);
+}
+.plan-history {
+  margin: 0.35rem 0 0;
+  padding-left: 1.1rem;
+  color: var(--muted);
+  font-size: var(--text-sm);
+}
+
 .footer {
   text-align: center;
   padding: 2rem 1rem;

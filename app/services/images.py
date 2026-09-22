@@ -69,6 +69,7 @@ def build_image_prompt(
     atmosphere: str = "",
     prompt_extra: str = "",
     brand_fragment: str = "",
+    scene_direction: str = "",
 ) -> str:
     """Monta prompt em inglês a partir do roteiro/título + bible dos personagens.
 
@@ -116,6 +117,9 @@ def build_image_prompt(
         parts.append(brand_fragment.strip())
     if (prompt_extra or "").strip():
         parts.append(prompt_extra.strip())
+    direction = _sanitize_prompt(scene_direction or "")
+    if direction:
+        parts.append(f"scene direction: {direction}")
     prompt = "\n".join(parts)
     if compact:
         prompt = " ".join(prompt.split())
@@ -144,6 +148,7 @@ def generate_scene_image(
     atmosphere: str = "",
     prompt_extra: str = "",
     brand_fragment: str = "",
+    scene_direction: str = "",
 ) -> tuple[Path, str]:
     """Gera imagem no formato do projeto (16:9 ou 9:16).
 
@@ -184,6 +189,7 @@ def generate_scene_image(
         atmosphere=atmosphere,
         prompt_extra=prompt_extra,
         brand_fragment=brand_fragment,
+        scene_direction=scene_direction,
     )
     prompt_full = build_image_prompt(
         scene_title,
