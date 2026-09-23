@@ -82,7 +82,35 @@ Na seção **Biblioteca de prompts**:
 - Aplicar acrescenta o texto às notas de imagem, ao roteiro ou às notas da marca.
 - Há exemplos iniciais do estúdio; você pode salvar blocos do projeto ou da biblioteca do app.
 
-No **Roteiro**, quatro modelos de arco (queda e graça, confronto e fé, chamado e libertação, julgamento e aliança) preenchem um esboço em português para editar.
+No **Roteiro**, os modelos de arco (queda e graça, confronto e fé, chamado e libertação, julgamento e aliança, e o gancho bíblico) preenchem um esboço em português para editar.
+
+### Gancho bíblico Prosperidade e Fé
+
+Fórmula de narração do canal, em dez tempos:
+
+1. **Gancho** — «Você sabia…?» com contraste
+2. **Âncora bíblica** — livro e capítulo
+3. **Cena** — o relato em ordem, com reverência
+4. **Tensão** — o momento mais difícil
+5. **Detalhe impressionante** — o fato que prende
+6. **Por quê?** — a explicação breve da Escritura
+7. **Legado** — o que a personagem deixou
+8. **Ensinamento** — a moral explícita
+9. **Aplicação** — «Talvez você também…»
+10. **Fecho e convite** — pergunta de engajamento, inscrição e sino
+
+O esboço médio mira **2 a 4 minutos** (cerca de 350 a 450 palavras). Há também **Gancho bíblico — Shorts**, cerca de 45 a 70 segundos. O exemplo preenchido é Moisés no monte Nebo (Deuteronômio 34), narração de referência do próprio canal. Troque personagem, lugar e passagem e conserve a ordem. Se for narrar direto, apague o rótulo do tempo no início de cada parágrafo.
+
+No **Planejamento**, um breve que não cai num arco já catalogado também sai nessa voz. «Moisés no monte Nebo» devolve a narração de referência, já sem os rótulos. «shorts» no breve pede a versão curta. Os arcos conhecidos (Davi, Noé, o mar, Rute e os demais) continuam como estavam.
+
+**Olhar e ritmo** (o mesmo vídeo de referência, sem um renderizador novo):
+
+- Stills em **Semi-realista 3D** (`semi3d`), com o Ken Burns que o estúdio já faz. Aplicar o molde, ou as notas visuais do plano, sugere esse estilo.
+- Cada tempo vira cortes de cerca de **3 a 6 segundos** de narração. O prompt de cada corte é um storyboard literal do trecho: rolo ao citar a Escritura, paisagem na terra prometida, close dos olhos em «nunca se escureceram», Josué mais jovem na passagem da liderança.
+- **Legendas queimadas** no quadro. A intenção é karaokê com a palavra em destaque em **verde brilhante**; o queimador ainda grava o SRT em branco, e essa cor fica anotada no estilo de legenda da marca.
+- A última cena é um **convite de hoje** (pessoa contemporânea, gesto de inscrição), separada das cenas bíblicas. A descrição do YouTube leva a linha de inscrição e do sino.
+
+Na biblioteca de prompts, o bloco **Voz do gancho bíblico** (categoria voz narrativa) acrescenta um parágrafo nessa voz ao roteiro.
 
 ## Planejamento da equipe
 
@@ -97,6 +125,8 @@ O estúdio monta o plano em três etapas, sem API externa:
 O plano fica salvo no projeto. **Aplicar ao projeto** preenche só o que estiver marcado: roteiro e cenas, notas visuais (luz, atmosfera, biblioteca) e pacote do YouTube. Formato, áudio, marca, série e estilo visual não mudam. Se já houver roteiro ou metadados, a página pede confirmação. Imagens já geradas na mesma posição de cena são mantidas.
 
 Caminho rápido: breve «Rute no campo de Boaz» → **Planejar com equipe** → revisar as três mesas → **Aplicar ao projeto** → roteiro, cenas e campos do YouTube preenchidos.
+
+Outro caminho: breve «Moisés no monte Nebo, Deuteronômio 34» (ou uma história ainda sem arco) → o roteirista escreve o gancho, a âncora, o detalhe impressionante, a aplicação e o convite de inscrição.
 
 Em **Publicar**, o botão **Preencher título e descrição padrão** monta os metadados (série, episódio e marca) sem precisar renderizar de novo.
 
@@ -156,7 +186,7 @@ No projeto, cadastre nome, papel e bíblia visual. O editor de cenas tem um camp
 ## Testes
 
 ```bash
-PYTHONPATH=. python3 -m unittest tests.test_studio_controls tests.test_planning
+PYTHONPATH=. python3 -m unittest tests.test_studio_controls tests.test_planning tests.test_gancho_biblico
 ```
 
 ## Licença

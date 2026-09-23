@@ -17,6 +17,10 @@ def segment_script(
         return []
 
     paragraphs = [p.strip() for p in re.split(r"\n\s*\n", text) if p.strip()]
+    from app.services.gancho_biblico import is_gancho_outline, outline_to_scenes
+
+    if is_gancho_outline(text):
+        return outline_to_scenes(text)
     if len(paragraphs) < min_scenes:
         sentences = _split_sentences(text)
         if len(sentences) >= min_scenes:

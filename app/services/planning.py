@@ -10,6 +10,8 @@ import re
 import unicodedata
 from typing import Any
 
+from app.services import gancho_biblico
+from app.services.demo_script import MOISES_NEBO_BEATS, MOISES_NEBO_SHORT_BEATS
 from app.services.prompt_library import append_block_text, seed_specs
 from app.services.publish import generate_metadata
 from app.services.visual import (
@@ -126,6 +128,121 @@ _BOOK_ALT = "|".join(sorted(_BOOK_DISPLAY, key=len, reverse=True))
 _PASSAGE_RE = re.compile(
     rf"(?:(?<=\s)|^)(?:(\d)\s+)?({_BOOK_ALT})\s+(\d+)(?:\s+(\d+))?"
 )
+
+
+def _nebo_scenes() -> tuple[dict[str, str], ...]:
+    """Dez tempos de Moisés no monte Nebo, narração limpa para o roteirista."""
+    specs = (
+        (
+            "A pergunta",
+            "wide",
+            "golden",
+            "desert",
+            "Moisés",
+            "Deuteronômio 34:1-4",
+            "Plano aberto do monte Nebo ao entardecer, Moisés de costas e a terra prometida ao longe. Sem texto na imagem.",
+        ),
+        (
+            "O capítulo",
+            "medium",
+            "natural",
+            "desert",
+            "Moisés",
+            "Deuteronômio 34:1",
+            "Plano médio de um ancião no cume, manto simples e o horizonte de Canaã. Clima de Escritura, sem letras no quadro.",
+        ),
+        (
+            "O monte Nebo",
+            "wide",
+            "golden",
+            "desert",
+            "Moisés",
+            "Deuteronômio 34:1-4",
+            "Vale do Jordão e Jericó pequenos ao fundo, Moisés no primeiro plano largo, luz de fim de tarde.",
+        ),
+        (
+            "O limite",
+            "close",
+            "dramatic",
+            "desert",
+            "Moisés",
+            "Deuteronômio 34:4-5",
+            "Close do rosto sereno e do cajado no chão. Não mostrar a morte nem o corpo: só o limite e o horizonte.",
+        ),
+        (
+            "Os olhos aos 120",
+            "close",
+            "golden",
+            "desert",
+            "Moisés",
+            "Deuteronômio 34:7",
+            "Close dos olhos claros e das mãos firmes de um ancião. Vigor sem decadência gráfica e sem número escrito.",
+        ),
+        (
+            "Meribá",
+            "medium",
+            "rembrandt",
+            "desert",
+            "Moisés, Arão",
+            "Números 20:7-12",
+            "Memória sóbria: rocha e água ao longe, dois vultos, luz lateral. Sem revolta caricata e sem violência.",
+        ),
+        (
+            "O que ficou",
+            "wide",
+            "natural",
+            "desert",
+            "Moisés, Josué",
+            "Deuteronômio 34:6-9",
+            "Povo pequeno em marcha no deserto e um sucessor ao lado. A sepultura não aparece: o lugar permanece desconhecido.",
+        ),
+        (
+            "A lição",
+            "medium",
+            "firelight",
+            "camp",
+            "Moisés",
+            "Deuteronômio 34:10-12",
+            "Lamparina e rosto de quem ensina, tenda simples. Clima de legado, sem cartaz.",
+        ),
+        (
+            "Quem espera",
+            "close",
+            "golden",
+            "camp",
+            "",
+            "Deuteronômio 34",
+            "Close humano e digno, olhar para o horizonte. Convite sem pose moderna e sem texto.",
+        ),
+        (
+            "O convite",
+            "medium",
+            "golden",
+            "desert",
+            "",
+            "Deuteronômio 34",
+            "Cume com a terra ainda à vista e luz dourada, espaço para a última frase. Sem letras na imagem.",
+        ),
+    )
+    if len(specs) != len(gancho_biblico.BEATS) or len(specs) != len(MOISES_NEBO_BEATS):
+        raise RuntimeError("Arco de Moisés no Nebo fora da ordem dos dez tempos.")
+    scenes: list[dict[str, str]] = []
+    for spec, beat, narration in zip(specs, gancho_biblico.BEATS, MOISES_NEBO_BEATS):
+        title, camera, light, atmosphere, cast, reference, art = spec
+        scenes.append(
+            _cena(
+                title,
+                beat["label"],
+                narration,
+                reference,
+                cast,
+                camera,
+                light,
+                atmosphere,
+                art,
+            )
+        )
+    return tuple(scenes)
 
 
 def _cena(
@@ -335,6 +452,24 @@ _STORIES: tuple[dict[str, Any], ...] = (
                 "Grupo na margem ao amanhecer, rostos cansados e aliviados, mar calmo atrás. Luz dourada, sem troféu de guerra.",
             ),
         ),
+    },
+    {
+        "id": "moises_nebo",
+        "title": "Moisés no Monte Nebo",
+        "passage": "Deuteronômio 34",
+        "hook": MOISES_NEBO_BEATS[0],
+        "light": "golden",
+        "atmosphere": "desert",
+        "keys": (
+            ("monte nebo", 48),
+            ("nebo", 36),
+            ("deuteronomio 34", 46),
+            ("moises no nebo", 44),
+            ("morte de moises", 36),
+            ("aguas de meriba", 34),
+            ("meriba", 28),
+        ),
+        "scenes": _nebo_scenes(),
     },
     {
         "id": "rute",
@@ -1055,6 +1190,7 @@ def example_briefs() -> list[tuple[str, str]]:
         ("Davi e Golias no vale", "davi_golias"),
         ("a arca de Noé", "noe_arca"),
         ("Moisés no mar Vermelho", "moises_mar"),
+        ("Moisés no monte Nebo", "moises_nebo"),
         ("Rute no campo de Boaz", "rute"),
         ("Daniel na cova dos leões", "daniel_leoes"),
         ("Jonas e o grande peixe", "jonas"),
@@ -1185,61 +1321,82 @@ def _guess_light(atmosphere: str, text: str) -> str:
     return "golden"
 
 
-def _short_brief(brief: str, limit: int = 180) -> str:
-    text = re.sub(r"\s+", " ", brief).strip().strip("«»\"'")
-    if len(text) > limit:
-        return text[: limit - 1].rstrip() + "…"
-    return text
+def _prefers_shorts(brief: str) -> bool:
+    folded = _fold(brief)
+    return _contains_key(folded, "shorts") or "9 16" in folded
+
+
+def _gancho_hook(narration: str) -> str:
+    first = (narration or "").strip()
+    mark = first.find("?")
+    if mark >= 0:
+        return first[: mark + 1].strip()
+    return first
 
 
 def _generic_scenes(brief: str, title: str, passage: str) -> list[dict[str, str]]:
-    short = _short_brief(brief)
-    passage_bit = f" ({passage})" if passage else ""
+    """Breve sem arco catalogado: dez tempos na voz do gancho bíblico."""
     reference = passage or "Conferir a passagem antes de publicar"
     atmosphere = _guess_atmosphere(f"{brief} {title}")
     light = _guess_light(atmosphere, brief)
-    cameras = ("wide", "medium", "close", "over_shoulder", "wide")
-    lights = (light, "dramatic", "firelight", "golden", "golden")
-    outlines = (
-        (
-            "Onde a história começa",
-            "Abertura",
-            f"Esta história bíblica começa assim: {short}. Antes de qualquer sinal, a cena mostra o lugar e quem está ali.",
-            "Mostre o lugar antes de as pessoas ocuparem o quadro.",
-        ),
-        (
-            "O peso do conflito",
-            "Conflito",
-            f"O conflito de «{title}» ganha peso: há algo a perder e alguém que ainda não sabe como atravessar. A narração não apressa a resposta.",
-            "O problema precisa ser legível no corpo e no cenário.",
-        ),
-        (
-            "A escolha",
-            "Decisão",
-            "Chega o instante da escolha. Obediência, fé ou misericórdia aparecem num gesto pequeno, antes de qualquer sinal grandioso.",
-            "Um gesto pequeno no centro: mãos, olhar, um objeto.",
-        ),
-        (
-            "A virada",
-            "Virada",
-            f"A virada não apaga o caminho já andado. Em «{title}», Deus age no meio da fraqueza humana, e a cena guarda um rosto — não só o prodígio.",
-            "A ação entra na luz, sem efeito vazio e sem texto na imagem.",
-        ),
-        (
-            "O que permanece",
-            "Desfecho",
-            f"A última cena deixa uma frase de esperança e aponta de volta para a Escritura{passage_bit}. Quem assiste é convidado a reler com calma.",
-            "Rostos em paz e espaço para a última frase da narração.",
-        ),
+    shorts = _prefers_shorts(brief)
+    lines = gancho_biblico.generic_narrations(brief, title, passage, shorts=shorts)
+    titles = (
+        "O gancho",
+        "A âncora bíblica",
+        "A cena",
+        "O momento mais difícil",
+        "O detalhe impressionante",
+        "A explicação",
+        "O legado",
+        "O ensinamento",
+        "A aplicação",
+        "O fecho e o convite",
+    )
+    cameras = (
+        "wide",
+        "medium",
+        "wide",
+        "close",
+        "close",
+        "medium",
+        "wide",
+        "medium",
+        "close",
+        "medium",
+    )
+    lights = (
+        light,
+        "natural",
+        light,
+        "dramatic",
+        "golden",
+        "rembrandt",
+        light,
+        "firelight",
+        "golden",
+        "golden",
+    )
+    hints = (
+        "Abra no rosto ou no lugar, antes de explicar o contraste.",
+        "Um objeto ou o horizonte que lembrem a passagem, sem texto na imagem.",
+        "Mostre o lugar e a personagem na ordem do relato.",
+        "O obstáculo precisa ser legível no corpo e no cenário, sem violência gráfica.",
+        "Close no detalhe concreto: mãos, olhos ou um objeto, sem letras.",
+        "Clima de explicação sóbria, não um tribunal caricato.",
+        "O legado em gesto largo: caminho, povo pequeno, horizonte.",
+        "Luz de ensinamento e rostos humanos, sem cartaz.",
+        "Quem assiste é convidado pelo olhar, sem pose moderna.",
+        "Último quadro em paz, espaço para a frase final, sem texto na imagem.",
     )
     scenes: list[dict[str, str]] = []
-    for index, (scene_title, beat, narration, hint) in enumerate(outlines):
+    for index, narration in enumerate(lines):
         camera = cameras[index]
         scene_light = lights[index]
         scenes.append(
             _cena(
-                scene_title,
-                beat,
+                titles[index],
+                gancho_biblico.BEATS[index]["label"],
                 narration,
                 reference,
                 "",
@@ -1248,7 +1405,7 @@ def _generic_scenes(brief: str, title: str, passage: str) -> list[dict[str, str]
                 atmosphere,
                 (
                     f"{_label('camera', camera)} com luz {_label('light', scene_light).lower()} "
-                    f"e clima de {_label('atmosphere', atmosphere).lower()}. {hint}"
+                    f"e clima de {_label('atmosphere', atmosphere).lower()}. {hints[index]}"
                 ),
             )
         )
@@ -1310,16 +1467,17 @@ def _split_scenes(
         light = _preset("light", scene.get("light", ""), fallback_light)
         camera = _preset("camera", scene.get("camera", ""), "wide")
         atmosphere = _preset("atmosphere", scene.get("atmosphere", ""), fallback_atmosphere)
-        narrative.append(
-            {
-                "index": index,
-                "title": scene["title"],
-                "beat": scene["beat"],
-                "narration": scene["narration"],
-                "reference": scene.get("reference") or "",
-                "cast": scene.get("cast") or "",
-            }
-        )
+        narrative_scene: dict[str, Any] = {
+            "index": index,
+            "title": scene["title"],
+            "beat": scene["beat"],
+            "narration": scene["narration"],
+            "reference": scene.get("reference") or "",
+            "cast": scene.get("cast") or "",
+        }
+        if scene.get("duration_sec") not in (None, ""):
+            narrative_scene["duration_sec"] = scene["duration_sec"]
+        narrative.append(narrative_scene)
         notes.append(
             {
                 "index": index,
@@ -1369,11 +1527,17 @@ def compose_plan(
 ) -> dict[str, Any]:
     """Roda as três etapas e devolve um plano serializável."""
     cleaned = _clean_brief(brief)
+    shorts = _prefers_shorts(cleaned)
     story = match_story(cleaned)
     suggested = str(story["title"]) if story else suggest_title(cleaned)
     passage = str(story["passage"]) if story else extract_passage(cleaned)
     if story:
         raw_scenes = [dict(scene) for scene in story["scenes"]]
+        if shorts and story["id"] == "moises_nebo":
+            if len(MOISES_NEBO_SHORT_BEATS) != len(raw_scenes):
+                raise RuntimeError("Variante curta do gancho fora da ordem dos dez tempos.")
+            for scene, line in zip(raw_scenes, MOISES_NEBO_SHORT_BEATS):
+                scene["narration"] = line
         fallback_light = _preset("light", str(story.get("light") or ""), "golden")
         fallback_atmosphere = _preset(
             "atmosphere", str(story.get("atmosphere") or ""), "desert"
@@ -1382,6 +1546,13 @@ def compose_plan(
         fallback_atmosphere = _guess_atmosphere(cleaned)
         fallback_light = _guess_light(fallback_atmosphere, cleaned)
         raw_scenes = _generic_scenes(cleaned, suggested, passage)
+
+    uses_gancho = story is None or story.get("id") == "moises_nebo"
+    if uses_gancho:
+        raw_scenes = gancho_biblico.expand_storyboard_cuts(
+            raw_scenes,
+            nebo=bool(story and story.get("id") == "moises_nebo"),
+        )
 
     narrative, notes = _split_scenes(
         raw_scenes,
@@ -1411,16 +1582,27 @@ def compose_plan(
         f"Direção de arte para {suggested}: luz {light_label}, "
         f"atmosfera {atmosphere_label}. { _SHARED_TAIL }"
     )
-    beats = ", ".join(str(scene["beat"]) for scene in narrative)
+    beat_names: list[str] = []
+    for scene in narrative:
+        label = str(scene["beat"])
+        if not beat_names or beat_names[-1] != label:
+            beat_names.append(label)
+    beats = ", ".join(beat_names)
     if story:
         roteiro_summary = (
             f"Arco de «{story['title']}» ({passage}): {len(narrative)} cenas — {beats}."
         )
+        if shorts and story["id"] == "moises_nebo":
+            roteiro_summary += " Versão curta, cerca de um minuto."
     else:
         roteiro_summary = (
-            f"Arco livre a partir do breve, em {len(narrative)} cenas — {beats}. "
+            f"Arco gancho bíblico a partir do breve, em {len(narrative)} cenas — {beats}. "
             "Vale conferir a passagem antes de gravar."
         )
+        if shorts:
+            roteiro_summary += " Versão curta, cerca de um minuto."
+    if uses_gancho:
+        roteiro_summary += " Cortes de imagem a cada 3 a 6 segundos de narração."
     library_bit = ", ".join(block_titles) if block_titles else "nenhum bloco extra"
     arte_summary = (
         f"Mantive o estilo já escolhido ({style_label}) e marquei {light_label} "
@@ -1428,6 +1610,12 @@ def compose_plan(
         f"o preset global de câmera do projeto fica como está. "
         f"Blocos da biblioteca: {library_bit}."
     )
+    if uses_gancho:
+        arte_summary += (
+            " Sugestão deste arco: Semi-realista 3D, stills com Ken Burns e "
+            "corte a cada 3 a 6 segundos. A cena final é um convite de hoje, "
+            "separado das cenas bíblicas."
+        )
 
     yt_title_base = _meaningful_title(title, suggested)
     theme_line = (theme or "histórias bíblicas").strip()
@@ -1441,9 +1629,10 @@ def compose_plan(
         brand_voice=brand_voice or "",
         brand_caption_style=brand_caption_style or "",
     )
-    hook = str(story["hook"]) if story else (
-        f"Antes do desfecho, há uma escolha. Acompanhe {suggested} em poucos minutos."
-    )
+    if story and story["id"] != "moises_nebo":
+        hook = str(story["hook"])
+    else:
+        hook = _gancho_hook(str(raw_scenes[0]["narration"]))
     description = (meta.get("youtube_description") or "").strip()
     if hook and not description.startswith(hook):
         description = f"{hook}\n\n{description}"
@@ -1454,6 +1643,8 @@ def compose_plan(
             description = description.replace(needle, f"{line}{needle}", 1)
         else:
             description = f"{description}{line}"
+    if uses_gancho and gancho_biblico.YOUTUBE_CTA not in description:
+        description = f"{description}\n\n{gancho_biblico.YOUTUBE_CTA}"
     series = (series_name or "").strip()
     editor_bits = [f"título com {len(meta['youtube_title'])} caracteres"]
     if series:
@@ -1492,6 +1683,15 @@ def compose_plan(
         "atmosphere_preset": project_atmosphere,
         "atmosphere_label": atmosphere_label,
         "prompt_extra": prompt_extra,
+        **(
+            {
+                "visual_style": gancho_biblico.VISUAL_STYLE,
+                "burn_captions": 1,
+                "brand_caption_style": gancho_biblico.CAPTION_STYLE,
+            }
+            if uses_gancho
+            else {}
+        ),
         "library_blocks": blocks,
         "scene_notes": notes,
     }
@@ -1570,7 +1770,11 @@ def apply_plan_fields(
     visual: bool = True,
     youtube: bool = True,
 ) -> dict[str, Any]:
-    """Monta o patch do projeto. Não mexe em formato, áudio, marca, série nem estilo."""
+    """Monta o patch do projeto. Não mexe em formato, áudio nem série.
+
+    O arco gancho bíblico pode sugerir o estilo semi3d, a legenda queimada e a
+    duração de cada corte. Os outros arcos deixam estilo e marca como estão.
+    """
     project = project or {}
     agents = (plan or {}).get("agents") or {}
     patch: dict[str, Any] = {}
@@ -1589,6 +1793,12 @@ def apply_plan_fields(
         for index, scene in enumerate(scenes_in):
             prev = existing[index] if index < len(existing) and isinstance(existing[index], dict) else {}
             note = notes.get(index, {})
+            prev_dur = prev.get("duration_sec")
+            if prev_dur in ("", None):
+                prev_dur = None
+            planned_dur = scene.get("duration_sec")
+            if planned_dur in ("", None):
+                planned_dur = None
             item: dict[str, Any] = {
                 "index": index,
                 "title": str(scene.get("title") or f"Cena {index + 1}"),
@@ -1597,7 +1807,7 @@ def apply_plan_fields(
                 "image_path": prev.get("image_path"),
                 "image_source": prev.get("image_source"),
                 "image_prompt": prev.get("image_prompt"),
-                "duration_sec": prev.get("duration_sec") if prev.get("duration_sec") not in ("",) else None,
+                "duration_sec": prev_dur if prev_dur is not None else planned_dur,
                 "art_note": str(note.get("art_note") or ""),
                 "art_light": str(note.get("light") or ""),
                 "art_camera": str(note.get("camera") or ""),
@@ -1619,6 +1829,12 @@ def apply_plan_fields(
             patch["light_preset"] = arte["light_preset"]
         if arte.get("atmosphere_preset"):
             patch["atmosphere_preset"] = arte["atmosphere_preset"]
+        if arte.get("visual_style"):
+            patch["visual_style"] = arte["visual_style"]
+        if arte.get("brand_caption_style"):
+            patch["brand_caption_style"] = arte["brand_caption_style"]
+        if arte.get("burn_captions"):
+            patch["burn_captions"] = 1
     if youtube:
         editor = agents.get("editor_youtube") or {}
         if not (editor.get("youtube_title") or editor.get("youtube_description")):

@@ -88,3 +88,59 @@ DAVI_GOLIAS_LONG_HINTS = [
     "A pedra atinge a testa do gigante",
     "A vitória da fé no vale de Elá",
 ]
+
+
+# Referência do próprio canal Prosperidade e Fé (YouTube t3xB18IwbFk, ~184 s).
+# Espécime da fórmula de narração do canal, para testes e para o arco do roteirista.
+# Não é material de terceiro.
+MOISES_NEBO_TITLE = "Moisés no Monte Nebo"
+MOISES_NEBO_THEME = "histórias bíblicas"
+MOISES_NEBO_PASSAGE = "Deuteronômio 34"
+MOISES_NEBO_CHANNEL = "Prosperidade e Fé"
+MOISES_NEBO_YOUTUBE_ID = "t3xB18IwbFk"
+MOISES_NEBO_DURATION_SEC = 184
+
+# Dez tempos, na ordem do arco. Juntar com espaço único reproduz a narração contínua.
+MOISES_NEBO_BEATS: tuple[str, ...] = (
+    "Você sabia que Moisés chegou a contemplar a terra prometida com os próprios olhos, mas nunca entrou nela?",
+    "A história está registrada em Deuteronômio, capítulo 34, e marca um dos momentos mais emocionantes da Bíblia.",
+    "Depois de muitos anos conduzindo o povo de Israel pelo deserto, Moisés subiu ao monte Nebo, diante de Jericó. Ali Deus mostrou a ele a terra prometida. Moisés conseguiu enxergar Canaã, as terras que Deus havia prometido a Abraão, Isaque e Jacó.",
+    "Mas havia algo que Moisés não sabia fazer. Ele não poderia atravessar o Jordão e entrar naquela terra. Deus havia determinado que Moisés apenas contemplaria a promessa. Então, chegou o momento mais difícil. A Bíblia diz que Moisés, servo do Senhor, morreu ali na terra de Moabe, conforme a palavra do próprio Deus.",
+    "E existe um detalhe impressionante. Os seus olhos nunca se escureceram, nem se lhe abateu o vigor. Moisés tinha 120 anos. Mesmo depois de uma vida inteira de desafios, sua força permanecia.",
+    "Mas por que Deus permitiu que Moisés morresse antes de entrar na terra prometida? A Bíblia explica que em determinado momento Moisés e Arão não santificaram o nome de Deus diante do povo nas águas de Meribá. Por isso, Deus declarou que Moisés contemplaria a terra, mas não entraria nela. E então Josué assumiria a liderança de Israel.",
+    "Mas a história não termina simplesmente com a morte de Moisés. Deuteronômio diz que ninguém conheceu o lugar da sua sepultura. E Moisés deixou um legado que atravessou gerações. Ele foi o homem que Deus usou para conduzir Israel para fora do Egito. Recebeu a lei no monte Sinai e guiou o povo durante décadas.",
+    "Sua história nos ensina que servir a Deus não significa que teremos todas as coisas exatamente como imaginamos. Moisés não entrou em Canaã, mas contemplou a promessa e sua missão não foi esquecida.",
+    "Talvez você também esteja diante de algo que esperou durante muito tempo e ainda não conseguiu alcançar. Lembre-se de Moisés. Deus continua sendo Deus mesmo quando não entendemos todos os seus caminhos.",
+    "Confie no Senhor, permaneça fiel e continue caminhando, porque a nossa história não termina simplesmente onde os nossos olhos conseguem enxergar. E você já tinha percebido esse detalhe sobre a morte de Moisés no Monte Nebo? Inscreva-se no canal e ative o sino para receber as notificações de novos vídeos.",
+)
+
+MOISES_NEBO_SCRIPT = " ".join(MOISES_NEBO_BEATS)
+
+MOISES_NEBO_SCENE_HINTS = [
+    "Gancho: a terra vista e não entrada",
+    "Âncora: Deuteronômio 34",
+    "Cena: o monte Nebo diante de Jericó",
+    "Tensão: o Jordão que não se atravessa",
+    "Detalhe: vigor aos 120 anos",
+    "Por quê: as águas de Meribá",
+    "Legado: Egito, Sinai e o deserto",
+    "Ensinamento: a missão não foi esquecida",
+    "Aplicação: a espera de quem assiste",
+    "Fecho: confiança e convite ao canal",
+]
+
+# Variante curta (~45–70 s) da mesma referência, ainda nos dez tempos.
+MOISES_NEBO_SHORT_BEATS: tuple[str, ...] = (
+    "Você sabia que Moisés contemplou a terra prometida e nunca entrou nela?",
+    "A história está registrada em Deuteronômio, capítulo 34.",
+    "No monte Nebo, diante de Jericó, Deus mostrou Canaã a Moisés.",
+    "Então, chegou o momento mais difícil. Ele não atravessou o Jordão e morreu em Moabe.",
+    "E existe um detalhe impressionante. Aos 120 anos, os olhos não se escureceram nem se lhe abateu o vigor.",
+    "Mas por que Deus permitiu isso? Em Meribá, Moisés e Arão não santificaram o nome do Senhor.",
+    "Moisés deixou um legado: a saída do Egito, a lei no Sinai e décadas guiando o povo.",
+    "Sua história nos ensina que servir a Deus não é receber tudo como imaginamos.",
+    "Talvez você também espere algo que ainda não alcançou. Deus continua sendo Deus.",
+    "E você já tinha percebido esse detalhe? Inscreva-se no canal e ative o sino para receber as notificações de novos vídeos.",
+)
+
+MOISES_NEBO_SHORT_SCRIPT = " ".join(MOISES_NEBO_SHORT_BEATS)

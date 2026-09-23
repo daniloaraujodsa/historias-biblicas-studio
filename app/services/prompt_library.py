@@ -115,6 +115,17 @@ SEED_BLOCKS: tuple[dict[str, str], ...] = (
         ),
     },
     {
+        "title": "Voz do gancho bíblico",
+        "category": "narrativa",
+        "target": "script",
+        "body": (
+            "Você sabia que este relato guarda um contraste que quase passa despercebido? "
+            "A história está registrada na Escritura. E existe um detalhe impressionante no meio do caminho. "
+            "Talvez você também esteja diante de algo que esperou durante muito tempo. "
+            "Inscreva-se no canal e ative o sino para receber as notificações de novos vídeos."
+        ),
+    },
+    {
         "title": "Tom de esperança",
         "category": "narrativa",
         "target": "brand_visual_notes",
