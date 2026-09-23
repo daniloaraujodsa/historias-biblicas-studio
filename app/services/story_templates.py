@@ -3,6 +3,13 @@ from __future__ import annotations
 
 from typing import Any
 
+from app.services.gancho_biblico import (
+    MID_FORM_HINT,
+    SHORTS_HINT,
+    marked_reference_script,
+    marked_shorts_script,
+)
+
 # Cada roteiro usa parágrafos separados para a segmentação em cenas.
 _TEMPLATES: tuple[dict[str, str], ...] = (
     {
@@ -60,6 +67,25 @@ Ele obedece antes de ver a chuva. Entram a família e os animais, dois a dois, c
 Quando as águas baixam, a arca repousa. Noé solta a ave, espera, e pisa de novo em terra firme. O primeiro gesto não é reconstruir uma cidade: é um altar. A salvação pede gratidão antes de qualquer plano novo.
 
 No céu fica o arco. Deus estabelece uma aliança com Noé e com toda a vida: as águas não voltarão a destruir a terra desse modo. Julgamento, salvação e aliança fecham a história. O recomeço é um compromisso, não só um sobrevivente.""",
+    },
+    {
+        "id": "gancho_biblico",
+        "label": "Gancho bíblico Prosperidade e Fé",
+        "summary": (
+            "Dez tempos do canal, do «Você sabia…?» ao convite de inscrição. "
+            f"Exemplo de Moisés no monte Nebo, {MID_FORM_HINT}. "
+            "Troque os fatos e conserve a ordem. Apague o rótulo do tempo se for narrar o parágrafo direto."
+        ),
+        "script": marked_reference_script(),
+    },
+    {
+        "id": "gancho_biblico_shorts",
+        "label": "Gancho bíblico — Shorts",
+        "summary": (
+            "A mesma fórmula em versão curta, no exemplo de Moisés no monte Nebo "
+            f"({SHORTS_HINT}). Os dez tempos permanecem, cada um numa frase."
+        ),
+        "script": marked_shorts_script(),
     },
 )
 

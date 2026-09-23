@@ -71,8 +71,9 @@ class PlanningTest(unittest.TestCase):
 
         free = compose_plan("A parábola do fermento na massa")
         self.assertIsNone(free["story_id"])
-        self.assertEqual(len(free["agents"]["roteirista"]["scenes"]), 5)
+        self.assertEqual(len(free["agents"]["roteirista"]["scenes"]), 10)
         self.assertIn("fermento", free["agents"]["roteirista"]["script"])
+        self.assertIn("Você sabia", free["agents"]["roteirista"]["script"])
         self.assertIn(
             "Conferir a passagem",
             free["agents"]["roteirista"]["scenes"][0]["reference"],

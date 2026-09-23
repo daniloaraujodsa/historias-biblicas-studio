@@ -250,6 +250,8 @@
   <p class="muted">
     Escreva um breve — história, passagem ou tema — e a equipe do estúdio devolve um plano em três etapas:
     roteiro, direção de arte e pacote do YouTube. Nada entra no projeto até você aplicar.
+    Um breve novo sai no gancho bíblico do canal (dez tempos, com detalhe, aplicação e convite).
+    Para o espécime, use «Moisés no monte Nebo». Acrescente «shorts» se quiser a versão de cerca de um minuto.
   </p>
   <form method="post" action="/api/projects/{{ project.id }}/planejar" class="stack">
     <label>Breve
@@ -363,7 +365,11 @@
 
 <section class="card" id="roteiro">
   <h2>Roteiro</h2>
-  <p class="muted">Um clique preenche um esboço em português. Depois você edita o texto.</p>
+  <p class="muted">
+    Um clique preenche um esboço em português. Depois você edita o texto.
+    O gancho bíblico traz os dez tempos do canal, no exemplo de Moisés no monte Nebo.
+    Apague o rótulo de cada tempo se for narrar o parágrafo direto.
+  </p>
   <div class="template-grid">
     {% for tpl in story_templates %}
     <form method="post" action="/api/projects/{{ project.id }}/story-template" {% if project.script %}onsubmit="return confirm('Substituir o roteiro atual por este esboço? As cenas segmentadas serão limpas.');"{% endif %}>
