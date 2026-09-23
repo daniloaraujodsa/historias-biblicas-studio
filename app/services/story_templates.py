@@ -74,7 +74,9 @@ No céu fica o arco. Deus estabelece uma aliança com Noé e com toda a vida: as
         "summary": (
             "Dez tempos do canal, do «Você sabia…?» ao convite de inscrição. "
             f"Exemplo de Moisés no monte Nebo, {MID_FORM_HINT}. "
-            "Troque os fatos e conserve a ordem. Apague o rótulo do tempo se for narrar o parágrafo direto."
+            "Sugere stills semi-realistas 3D com Ken Burns, cortes de 3 a 6 segundos, "
+            "legenda queimada com destaque verde e uma cena final de convite. "
+            "Troque os fatos e conserve a ordem."
         ),
         "script": marked_reference_script(),
     },
@@ -83,7 +85,7 @@ No céu fica o arco. Deus estabelece uma aliança com Noé e com toda a vida: as
         "label": "Gancho bíblico — Shorts",
         "summary": (
             "A mesma fórmula em versão curta, no exemplo de Moisés no monte Nebo "
-            f"({SHORTS_HINT}). Os dez tempos permanecem, cada um numa frase."
+            f"({SHORTS_HINT}). Mesmo look semi-realista, cortes curtos e convite final."
         ),
         "script": marked_shorts_script(),
     },

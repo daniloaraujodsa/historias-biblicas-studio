@@ -103,6 +103,13 @@ O esboço médio mira **2 a 4 minutos** (cerca de 350 a 450 palavras). Há tamb�
 
 No **Planejamento**, um breve que não cai num arco já catalogado também sai nessa voz. «Moisés no monte Nebo» devolve a narração de referência, já sem os rótulos. «shorts» no breve pede a versão curta. Os arcos conhecidos (Davi, Noé, o mar, Rute e os demais) continuam como estavam.
 
+**Olhar e ritmo** (o mesmo vídeo de referência, sem um renderizador novo):
+
+- Stills em **Semi-realista 3D** (`semi3d`), com o Ken Burns que o estúdio já faz. Aplicar o molde, ou as notas visuais do plano, sugere esse estilo.
+- Cada tempo vira cortes de cerca de **3 a 6 segundos** de narração. O prompt de cada corte é um storyboard literal do trecho: rolo ao citar a Escritura, paisagem na terra prometida, close dos olhos em «nunca se escureceram», Josué mais jovem na passagem da liderança.
+- **Legendas queimadas** no quadro. A intenção é karaokê com a palavra em destaque em **verde brilhante**; o queimador ainda grava o SRT em branco, e essa cor fica anotada no estilo de legenda da marca.
+- A última cena é um **convite de hoje** (pessoa contemporânea, gesto de inscrição), separada das cenas bíblicas. A descrição do YouTube leva a linha de inscrição e do sino.
+
 Na biblioteca de prompts, o bloco **Voz do gancho bíblico** (categoria voz narrativa) acrescenta um parágrafo nessa voz ao roteiro.
 
 ## Planejamento da equipe

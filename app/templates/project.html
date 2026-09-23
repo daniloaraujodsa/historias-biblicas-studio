@@ -367,12 +367,13 @@
   <h2>Roteiro</h2>
   <p class="muted">
     Um clique preenche um esboço em português. Depois você edita o texto.
-    O gancho bíblico traz os dez tempos do canal, no exemplo de Moisés no monte Nebo.
-    Apague o rótulo de cada tempo se for narrar o parágrafo direto.
+    O gancho bíblico traz os dez tempos do canal, no exemplo de Moisés no monte Nebo,
+    e já sugere stills semi-realistas 3D, cortes de 3 a 6 segundos, legenda queimada
+    com palavra-chave em verde e uma cena final de convite, separada das cenas bíblicas.
   </p>
   <div class="template-grid">
     {% for tpl in story_templates %}
-    <form method="post" action="/api/projects/{{ project.id }}/story-template" {% if project.script %}onsubmit="return confirm('Substituir o roteiro atual por este esboço? As cenas segmentadas serão limpas.');"{% endif %}>
+    <form method="post" action="/api/projects/{{ project.id }}/story-template" {% if project.script %}onsubmit="return confirm('Substituir o roteiro atual por este esboço? As cenas segmentadas serão substituídas.');"{% endif %}>
       <input type="hidden" name="template_id" value="{{ tpl.id }}" />
       <button type="submit" class="template-card">
         <strong>{{ tpl.label }}</strong>

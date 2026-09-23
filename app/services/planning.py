@@ -1467,16 +1467,17 @@ def _split_scenes(
         light = _preset("light", scene.get("light", ""), fallback_light)
         camera = _preset("camera", scene.get("camera", ""), "wide")
         atmosphere = _preset("atmosphere", scene.get("atmosphere", ""), fallback_atmosphere)
-        narrative.append(
-            {
-                "index": index,
-                "title": scene["title"],
-                "beat": scene["beat"],
-                "narration": scene["narration"],
-                "reference": scene.get("reference") or "",
-                "cast": scene.get("cast") or "",
-            }
-        )
+        narrative_scene: dict[str, Any] = {
+            "index": index,
+            "title": scene["title"],
+            "beat": scene["beat"],
+            "narration": scene["narration"],
+            "reference": scene.get("reference") or "",
+            "cast": scene.get("cast") or "",
+        }
+        if scene.get("duration_sec") not in (None, ""):
+            narrative_scene["duration_sec"] = scene["duration_sec"]
+        narrative.append(narrative_scene)
         notes.append(
             {
                 "index": index,
@@ -1546,6 +1547,13 @@ def compose_plan(
         fallback_light = _guess_light(fallback_atmosphere, cleaned)
         raw_scenes = _generic_scenes(cleaned, suggested, passage)
 
+    uses_gancho = story is None or story.get("id") == "moises_nebo"
+    if uses_gancho:
+        raw_scenes = gancho_biblico.expand_storyboard_cuts(
+            raw_scenes,
+            nebo=bool(story and story.get("id") == "moises_nebo"),
+        )
+
     narrative, notes = _split_scenes(
         raw_scenes,
         fallback_light=fallback_light,
@@ -1574,7 +1582,12 @@ def compose_plan(
         f"Direção de arte para {suggested}: luz {light_label}, "
         f"atmosfera {atmosphere_label}. { _SHARED_TAIL }"
     )
-    beats = ", ".join(str(scene["beat"]) for scene in narrative)
+    beat_names: list[str] = []
+    for scene in narrative:
+        label = str(scene["beat"])
+        if not beat_names or beat_names[-1] != label:
+            beat_names.append(label)
+    beats = ", ".join(beat_names)
     if story:
         roteiro_summary = (
             f"Arco de «{story['title']}» ({passage}): {len(narrative)} cenas — {beats}."
@@ -1588,6 +1601,8 @@ def compose_plan(
         )
         if shorts:
             roteiro_summary += " Versão curta, cerca de um minuto."
+    if uses_gancho:
+        roteiro_summary += " Cortes de imagem a cada 3 a 6 segundos de narração."
     library_bit = ", ".join(block_titles) if block_titles else "nenhum bloco extra"
     arte_summary = (
         f"Mantive o estilo já escolhido ({style_label}) e marquei {light_label} "
@@ -1595,6 +1610,12 @@ def compose_plan(
         f"o preset global de câmera do projeto fica como está. "
         f"Blocos da biblioteca: {library_bit}."
     )
+    if uses_gancho:
+        arte_summary += (
+            " Sugestão deste arco: Semi-realista 3D, stills com Ken Burns e "
+            "corte a cada 3 a 6 segundos. A cena final é um convite de hoje, "
+            "separado das cenas bíblicas."
+        )
 
     yt_title_base = _meaningful_title(title, suggested)
     theme_line = (theme or "histórias bíblicas").strip()
@@ -1622,6 +1643,8 @@ def compose_plan(
             description = description.replace(needle, f"{line}{needle}", 1)
         else:
             description = f"{description}{line}"
+    if uses_gancho and gancho_biblico.YOUTUBE_CTA not in description:
+        description = f"{description}\n\n{gancho_biblico.YOUTUBE_CTA}"
     series = (series_name or "").strip()
     editor_bits = [f"título com {len(meta['youtube_title'])} caracteres"]
     if series:
@@ -1660,6 +1683,15 @@ def compose_plan(
         "atmosphere_preset": project_atmosphere,
         "atmosphere_label": atmosphere_label,
         "prompt_extra": prompt_extra,
+        **(
+            {
+                "visual_style": gancho_biblico.VISUAL_STYLE,
+                "burn_captions": 1,
+                "brand_caption_style": gancho_biblico.CAPTION_STYLE,
+            }
+            if uses_gancho
+            else {}
+        ),
         "library_blocks": blocks,
         "scene_notes": notes,
     }
@@ -1738,7 +1770,11 @@ def apply_plan_fields(
     visual: bool = True,
     youtube: bool = True,
 ) -> dict[str, Any]:
-    """Monta o patch do projeto. Não mexe em formato, áudio, marca, série nem estilo."""
+    """Monta o patch do projeto. Não mexe em formato, áudio nem série.
+
+    O arco gancho bíblico pode sugerir o estilo semi3d, a legenda queimada e a
+    duração de cada corte. Os outros arcos deixam estilo e marca como estão.
+    """
     project = project or {}
     agents = (plan or {}).get("agents") or {}
     patch: dict[str, Any] = {}
@@ -1757,6 +1793,12 @@ def apply_plan_fields(
         for index, scene in enumerate(scenes_in):
             prev = existing[index] if index < len(existing) and isinstance(existing[index], dict) else {}
             note = notes.get(index, {})
+            prev_dur = prev.get("duration_sec")
+            if prev_dur in ("", None):
+                prev_dur = None
+            planned_dur = scene.get("duration_sec")
+            if planned_dur in ("", None):
+                planned_dur = None
             item: dict[str, Any] = {
                 "index": index,
                 "title": str(scene.get("title") or f"Cena {index + 1}"),
@@ -1765,7 +1807,7 @@ def apply_plan_fields(
                 "image_path": prev.get("image_path"),
                 "image_source": prev.get("image_source"),
                 "image_prompt": prev.get("image_prompt"),
-                "duration_sec": prev.get("duration_sec") if prev.get("duration_sec") not in ("",) else None,
+                "duration_sec": prev_dur if prev_dur is not None else planned_dur,
                 "art_note": str(note.get("art_note") or ""),
                 "art_light": str(note.get("light") or ""),
                 "art_camera": str(note.get("camera") or ""),
@@ -1787,6 +1829,12 @@ def apply_plan_fields(
             patch["light_preset"] = arte["light_preset"]
         if arte.get("atmosphere_preset"):
             patch["atmosphere_preset"] = arte["atmosphere_preset"]
+        if arte.get("visual_style"):
+            patch["visual_style"] = arte["visual_style"]
+        if arte.get("brand_caption_style"):
+            patch["brand_caption_style"] = arte["brand_caption_style"]
+        if arte.get("burn_captions"):
+            patch["burn_captions"] = 1
     if youtube:
         editor = agents.get("editor_youtube") or {}
         if not (editor.get("youtube_title") or editor.get("youtube_description")):

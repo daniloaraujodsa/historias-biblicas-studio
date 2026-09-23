@@ -336,12 +336,25 @@ async def api_apply_story_template(
     chosen = story_templates.get_template(template_id)
     if not chosen:
         raise HTTPException(404, "Modelo de história não encontrado")
-    db.update_project(
-        project_id,
-        script=chosen["script"].strip(),
-        scenes_json="[]",
-        status="script_ready",
-    )
+    from app.services.gancho_biblico import outline_to_scenes, project_production_fields, template_uses_production
+
+    script = chosen["script"].strip()
+    if template_uses_production(chosen["id"]):
+        paced = outline_to_scenes(script)
+        db.update_project(
+            project_id,
+            script=script,
+            scenes_json=db.scenes_to_json(paced),
+            status="scenes_ready",
+            **project_production_fields(),
+        )
+    else:
+        db.update_project(
+            project_id,
+            script=script,
+            scenes_json="[]",
+            status="script_ready",
+        )
     return RedirectResponse(f"/projects/{project_id}#roteiro", status_code=303)
 
 

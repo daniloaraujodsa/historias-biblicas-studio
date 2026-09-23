@@ -2,11 +2,15 @@
 
 Dez tempos em pt-BR, do gancho «Você sabia…?» ao convite de inscrição.
 O espécime de Moisés no monte Nebo é a narração de referência do próprio canal.
+
+A produção visual deste arco (stills semi-realistas, cortes curtos, legenda e
+cena final de convite) fica aqui, junto da narração — o estúdio já faz Ken Burns.
 """
 from __future__ import annotations
 
 import re
-from typing import Sequence
+import unicodedata
+from typing import Any, Sequence
 
 from app.services.demo_script import MOISES_NEBO_BEATS, MOISES_NEBO_SHORT_BEATS
 
@@ -172,3 +176,485 @@ def generic_narrations(
             "Inscreva-se no canal e ative o sino para receber as notificações de novos vídeos."
         ),
     ]
+
+
+# --- Produção visual do mesmo vídeo de referência (sem renderer novo) ---
+
+# 390 palavras em ~184 s no espécime do canal.
+REFERENCE_WORDS_PER_SEC = 390 / 184
+CUT_MIN_SEC = 3.0
+CUT_MAX_SEC = 6.0
+VISUAL_STYLE = "semi3d"
+YOUTUBE_CTA = (
+    "Inscreva-se no canal e ative o sino para receber as notificações de novos vídeos."
+)
+# O queimador de legendas ainda usa SRT em branco. O verde é a cor pedida
+# para a palavra em destaque; fica anotado no estilo de legenda da marca.
+CAPTION_STYLE = (
+    "Legendas queimadas no quadro, no ritmo da fala (karaokê). "
+    "Texto branco na base; a palavra em destaque deve aparecer em verde brilhante. "
+    "O estúdio grava o SRT e queima a legenda em branco: o verde é a intenção "
+    "de cor da palavra-chave neste arco."
+)
+_LOOK = (
+    "Still premium em 3D semi-realista, quadro parado com espaço para um lento "
+    "movimento de câmera. "
+)
+
+_CTA_SHOT: dict[str, str] = {
+    "title": "Convite para se inscrever",
+    "camera": "medium",
+    "light": "natural",
+    "atmosphere": "garden",
+    "cast": "",
+    "art_note": (
+        _LOOK
+        + "Cena de convite, separada das cenas bíblicas: pessoa de hoje, roupa "
+        "contemporânea simples, interior ou varanda atual, olhando para a câmera "
+        "e fazendo um gesto de inscrição, como quem pede para ativar o sino. "
+        "Sem manto, sem deserto, sem monte, sem texto e sem logo."
+    ),
+}
+
+_NEBO_BOARD: dict[str, dict[str, str]] = {
+    "gancho": {
+        "title": "A terra prometida à vista",
+        "camera": "wide",
+        "light": "golden",
+        "atmosphere": "desert",
+        "cast": "Moisés",
+        "art_note": (
+            _LOOK
+            + "Storyboard literal: plano aberto do monte Nebo, Moisés de costas, "
+            "paisagem da terra prometida ao longe. Sem texto na imagem."
+        ),
+    },
+    "ancora": {
+        "title": "O rolo da Escritura",
+        "camera": "close",
+        "light": "firelight",
+        "atmosphere": "camp",
+        "cast": "Moisés",
+        "art_note": (
+            _LOOK
+            + "Storyboard literal: close de um rolo de pergaminho aberto, como quem "
+            "cita a Escritura. Letras antigas só sugeridas, sem frase moderna legível."
+        ),
+    },
+    "cena": {
+        "title": "Nebo diante de Jericó",
+        "camera": "wide",
+        "light": "golden",
+        "atmosphere": "desert",
+        "cast": "Moisés",
+        "art_note": (
+            _LOOK
+            + "Storyboard literal: paisagem do vale, Jericó ao longe e o Jordão, "
+            "Moisés no cume vendo Canaã. Sem texto na imagem."
+        ),
+    },
+    "tensao": {
+        "title": "O Jordão que não se atravessa",
+        "camera": "medium",
+        "light": "dramatic",
+        "atmosphere": "desert",
+        "cast": "Moisés",
+        "art_note": (
+            _LOOK
+            + "Storyboard literal: Moisés parado diante do limite, o rio no vale, "
+            "sem atravessar. Não mostrar morte nem corpo."
+        ),
+    },
+    "detalhe": {
+        "title": "Os olhos aos 120 anos",
+        "camera": "close",
+        "light": "golden",
+        "atmosphere": "desert",
+        "cast": "Moisés",
+        "art_note": (
+            _LOOK
+            + "Storyboard literal: close dos olhos de Moisés, claros, que nunca se "
+            "escureceram, vigor no olhar de quem tem 120 anos. Sem número escrito."
+        ),
+    },
+    "porque": {
+        "title": "Meribá e o líder mais jovem",
+        "camera": "medium",
+        "light": "rembrandt",
+        "atmosphere": "desert",
+        "cast": "Moisés, Josué",
+        "art_note": (
+            _LOOK
+            + "Storyboard literal: rocha e água de Meribá; Josué mais jovem, em pé, "
+            "distinto do ancião, pronto para liderar. Sem violência."
+        ),
+    },
+    "legado": {
+        "title": "Egito, Sinai e o deserto",
+        "camera": "wide",
+        "light": "natural",
+        "atmosphere": "desert",
+        "cast": "Moisés",
+        "art_note": (
+            _LOOK
+            + "Storyboard literal: o legado em quadro amplo — saída pelo deserto, "
+            "o monte Sinai ao fundo e o povo em marcha. A sepultura não aparece."
+        ),
+    },
+    "ensinamento": {
+        "title": "A promessa contemplada",
+        "camera": "medium",
+        "light": "golden",
+        "atmosphere": "desert",
+        "cast": "Moisés",
+        "art_note": (
+            _LOOK
+            + "Storyboard literal: Moisés contempla a terra sem entrar, expressão "
+            "de missão cumprida. Sem texto na imagem."
+        ),
+    },
+    "aplicacao": {
+        "title": "Quem ainda espera",
+        "camera": "close",
+        "light": "golden",
+        "atmosphere": "camp",
+        "cast": "",
+        "art_note": (
+            _LOOK
+            + "Storyboard literal: close de um rosto em espera serena, olhando o "
+            "horizonte. Ainda sem o convite moderno e sem texto."
+        ),
+    },
+    "fecho": dict(_CTA_SHOT),
+}
+
+_GENERIC_BOARD: dict[str, dict[str, str]] = {
+    "gancho": {
+        "title": "O contraste",
+        "camera": "wide",
+        "light": "golden",
+        "atmosphere": "desert",
+        "cast": "",
+        "art_note": _LOOK + "Storyboard literal do gancho: o lugar da história em plano aberto, antes do desfecho. Sem texto na imagem.",
+    },
+    "ancora": {
+        "title": "O rolo da Escritura",
+        "camera": "close",
+        "light": "firelight",
+        "atmosphere": "camp",
+        "cast": "",
+        "art_note": _LOOK + "Storyboard literal: close de um rolo de pergaminho aberto, citando a passagem. Letras antigas só sugeridas, sem frase moderna.",
+    },
+    "cena": {
+        "title": "A cena narrada",
+        "camera": "wide",
+        "light": "golden",
+        "atmosphere": "desert",
+        "cast": "",
+        "art_note": _LOOK + "Storyboard literal da ação em ordem cronológica, no lugar que a frase descreve. Sem texto na imagem.",
+    },
+    "tensao": {
+        "title": "O momento mais difícil",
+        "camera": "medium",
+        "light": "dramatic",
+        "atmosphere": "desert",
+        "cast": "",
+        "art_note": _LOOK + "Storyboard literal do obstáculo: o limite visível no corpo e no cenário. Sem violência gráfica.",
+    },
+    "detalhe": {
+        "title": "O detalhe que prende",
+        "camera": "close",
+        "light": "golden",
+        "atmosphere": "desert",
+        "cast": "",
+        "art_note": _LOOK + "Storyboard literal do fato concreto da frase, em close. Sem letras na imagem.",
+    },
+    "porque": {
+        "title": "A explicação",
+        "camera": "medium",
+        "light": "rembrandt",
+        "atmosphere": "desert",
+        "cast": "",
+        "art_note": _LOOK + "Storyboard literal do motivo bíblico, sóbrio, sem tribunal caricato.",
+    },
+    "legado": {
+        "title": "O legado",
+        "camera": "wide",
+        "light": "natural",
+        "atmosphere": "desert",
+        "cast": "",
+        "art_note": _LOOK + "Storyboard literal do que a personagem deixou: caminho, povo pequeno, horizonte.",
+    },
+    "ensinamento": {
+        "title": "O ensinamento",
+        "camera": "medium",
+        "light": "golden",
+        "atmosphere": "camp",
+        "cast": "",
+        "art_note": _LOOK + "Storyboard literal da moral: um rosto e um gesto de fidelidade. Sem cartaz.",
+    },
+    "aplicacao": {
+        "title": "Quem ainda espera",
+        "camera": "close",
+        "light": "golden",
+        "atmosphere": "camp",
+        "cast": "",
+        "art_note": _LOOK + "Storyboard literal: close de quem espera, olhando o horizonte. Sem o convite moderno e sem texto.",
+    },
+    "fecho": dict(_CTA_SHOT),
+}
+
+
+def _fold(text: str) -> str:
+    raw = unicodedata.normalize("NFKD", text or "")
+    raw = "".join(ch for ch in raw if not unicodedata.combining(ch))
+    raw = raw.lower()
+    raw = re.sub(r"[^a-z0-9]+", " ", raw)
+    return re.sub(r"\s+", " ", raw).strip()
+
+
+def _beat_id_for_label(label: str) -> str:
+    for beat in BEATS:
+        if beat["label"] == label:
+            return beat["id"]
+    return ""
+
+
+def strip_beat_label(paragraph: str) -> tuple[str, str]:
+    text = (paragraph or "").strip()
+    for beat in BEATS:
+        prefix = f"{beat['label']} — "
+        if text.startswith(prefix):
+            return text[len(prefix):].strip(), beat["id"]
+    return text, ""
+
+
+def is_gancho_outline(script: str) -> bool:
+    paragraphs = [part.strip() for part in re.split(r"\n\s*\n", script or "") if part.strip()]
+    hits = 0
+    for paragraph in paragraphs:
+        _, beat_id = strip_beat_label(paragraph)
+        if beat_id:
+            hits += 1
+    return hits >= 6
+
+
+def split_cuts(text: str) -> list[str]:
+    """Quebra a narração em falas de cerca de 3 a 6 segundos."""
+    words = [word for word in (text or "").split() if word]
+    if not words:
+        return []
+    min_w = max(1, int(CUT_MIN_SEC * REFERENCE_WORDS_PER_SEC + 0.999))
+    max_w = max(min_w, int(CUT_MAX_SEC * REFERENCE_WORDS_PER_SEC))
+    if len(words) <= max_w:
+        return [" ".join(words)]
+    cuts: list[str] = []
+    index = 0
+    total = len(words)
+    while index < total:
+        remaining = total - index
+        if remaining <= max_w:
+            if remaining < min_w and cuts:
+                prev = cuts[-1].split()
+                need = min_w - remaining
+                if len(prev) - need >= min_w:
+                    cuts[-1] = " ".join(prev[:-need])
+                    cuts.append(" ".join(prev[-need:] + words[index:]))
+                else:
+                    cuts.append(" ".join(words[index:]))
+            else:
+                cuts.append(" ".join(words[index:]))
+            break
+        window = words[index : index + max_w]
+        break_at = max_w
+        for size in range(max_w, min_w - 1, -1):
+            if window[size - 1][-1:] in ".!?":
+                break_at = size
+                break
+        cuts.append(" ".join(words[index : index + break_at]))
+        index += break_at
+    return [cut for cut in cuts if cut.strip()]
+
+
+def duration_for(text: str) -> float:
+    words = max(1, len((text or "").split()))
+    seconds = words * (1 / REFERENCE_WORDS_PER_SEC)
+    return round(min(CUT_MAX_SEC, max(CUT_MIN_SEC, seconds)), 3)
+
+
+def _keyword_board(text: str) -> dict[str, str] | None:
+    folded = _fold(text)
+    if "inscreva" in folded or "ative o sino" in folded or "ativar o sino" in folded:
+        return dict(_CTA_SHOT)
+    if "olhos" in folded or "escurec" in folded:
+        return {
+            "title": "Close dos olhos",
+            "camera": "close",
+            "light": "golden",
+            "atmosphere": "desert",
+            "cast": "",
+            "art_note": (
+                _LOOK
+                + "Storyboard literal: close dos olhos, claros, que nunca se escureceram. "
+                "Sem número escrito e sem texto."
+            ),
+        }
+    if "josue" in folded:
+        return {
+            "title": "O líder mais jovem",
+            "camera": "medium",
+            "light": "golden",
+            "atmosphere": "desert",
+            "cast": "Josué",
+            "art_note": (
+                _LOOK
+                + "Storyboard literal: Josué mais jovem que o ancião, em pé, assumindo "
+                "a liderança. Sem violência e sem texto."
+            ),
+        }
+    if any(token in folded for token in ("registrada", "capitulo", "escritura", "pergaminho", "rolo")):
+        return {
+            "title": "O rolo da Escritura",
+            "camera": "close",
+            "light": "firelight",
+            "atmosphere": "camp",
+            "cast": "",
+            "art_note": (
+                _LOOK
+                + "Storyboard literal: close de um rolo de pergaminho aberto ao citar "
+                "a passagem. Letras antigas só sugeridas, sem frase moderna."
+            ),
+        }
+    if any(token in folded for token in ("terra prometida", "canaa", "nebo", "jerico", "jordao")):
+        return {
+            "title": "A paisagem prometida",
+            "camera": "wide",
+            "light": "golden",
+            "atmosphere": "desert",
+            "cast": "",
+            "art_note": (
+                _LOOK
+                + "Storyboard literal: paisagem ampla da terra prometida, vale e horizonte. "
+                "Sem texto na imagem."
+            ),
+        }
+    return None
+
+
+def storyboard_for(beat_id: str, text: str, *, nebo: bool) -> dict[str, str]:
+    table = _NEBO_BOARD if nebo else _GENERIC_BOARD
+    base = dict(table.get(beat_id) or table["cena"])
+    override = _keyword_board(text)
+    if override:
+        cast = base.get("cast") or ""
+        base.update(override)
+        if cast and not base.get("cast"):
+            base["cast"] = cast
+    if beat_id == "fecho":
+        base.update(_CTA_SHOT)
+    snippet = " ".join((text or "").split())
+    if len(snippet) > 180:
+        snippet = snippet[:177].rstrip() + "…"
+    note = base.get("art_note") or ""
+    if snippet and snippet not in note:
+        note = f"{note} Trecho: {snippet}"
+    base["art_note"] = note.strip()
+    return base
+
+
+def expand_storyboard_cuts(scenes: Sequence[dict[str, Any]], *, nebo: bool) -> list[dict[str, Any]]:
+    """Parte cada tempo em cortes de 3 a 6 s, com storyboard literal do trecho."""
+    expanded: list[dict[str, Any]] = []
+    for scene in scenes:
+        beat_id = _beat_id_for_label(str(scene.get("beat") or "")) or "cena"
+        parts = split_cuts(str(scene.get("narration") or ""))
+        if not parts:
+            continue
+        for part_index, part in enumerate(parts):
+            board = storyboard_for(beat_id, part, nebo=nebo)
+            title = board["title"]
+            if len(parts) > 1:
+                title = f"{title} {part_index + 1}"
+            item = dict(scene)
+            item.update(
+                {
+                    "title": title,
+                    "narration": part,
+                    "camera": board["camera"],
+                    "light": board["light"],
+                    "atmosphere": board["atmosphere"],
+                    "cast": board.get("cast") or "",
+                    "art_note": board["art_note"],
+                    "duration_sec": duration_for(part),
+                    "reference": scene.get("reference") or "",
+                }
+            )
+            expanded.append(item)
+    if expanded:
+        last = expanded[-1]
+        cta = storyboard_for("fecho", str(last.get("narration") or ""), nebo=nebo)
+        last["title"] = cta["title"]
+        last["camera"] = cta["camera"]
+        last["light"] = cta["light"]
+        last["atmosphere"] = cta["atmosphere"]
+        last["cast"] = cta.get("cast") or ""
+        last["art_note"] = cta["art_note"]
+        last["beat"] = "Fecho e convite"
+    return expanded
+
+
+def outline_to_scenes(script: str) -> list[dict[str, Any]]:
+    """Cenas faláveis a partir do esboço com rótulos, já no ritmo de 3 a 6 s."""
+    paragraphs = [part.strip() for part in re.split(r"\n\s*\n", script or "") if part.strip()]
+    nebo = "nebo" in _fold(script)
+    raw: list[dict[str, Any]] = []
+    for paragraph in paragraphs:
+        body, beat_id = strip_beat_label(paragraph)
+        label = next((beat["label"] for beat in BEATS if beat["id"] == beat_id), "Cena")
+        raw.append(
+            {
+                "title": label,
+                "beat": label if beat_id else "Cena",
+                "narration": body,
+                "reference": "Deuteronômio 34" if nebo else "",
+                "cast": "",
+                "camera": "wide",
+                "light": "golden",
+                "atmosphere": "desert",
+                "art_note": "",
+            }
+        )
+    paced = expand_storyboard_cuts(raw, nebo=nebo)
+    scenes: list[dict[str, Any]] = []
+    for index, item in enumerate(paced):
+        scenes.append(
+            {
+                "index": index,
+                "title": item["title"],
+                "text": item["narration"],
+                "cast": item.get("cast") or "",
+                "image_path": None,
+                "duration_sec": item.get("duration_sec"),
+                "image_source": None,
+                "image_prompt": None,
+                "art_note": item.get("art_note") or "",
+                "art_light": item.get("light") or "",
+                "art_camera": item.get("camera") or "",
+                "art_atmosphere": item.get("atmosphere") or "",
+                "reference": item.get("reference") or "",
+            }
+        )
+    return scenes
+
+
+def project_production_fields() -> dict[str, Any]:
+    """Sugestão de look deste arco: semi3d, legenda queimada e nota de karaokê."""
+    return {
+        "visual_style": VISUAL_STYLE,
+        "burn_captions": 1,
+        "brand_caption_style": CAPTION_STYLE,
+    }
+
+
+def template_uses_production(template_id: str) -> bool:
+    return str(template_id or "").startswith("gancho_biblico")
